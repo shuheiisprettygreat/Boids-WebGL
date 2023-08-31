@@ -45,6 +45,12 @@ class WebGLRenderer extends Renderer {
     }
 
     //---------------------------------------
+    init(){
+    
+
+    }
+
+    //---------------------------------------
     OnResize(width, height){
         this.width = width;
         this.height = height;
