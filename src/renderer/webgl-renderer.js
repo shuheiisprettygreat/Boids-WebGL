@@ -13,10 +13,14 @@ import fsSource from './shaders/mat1/f.frag?raw';
 import skyVsSource from './shaders/skybox_grad/skybox_grad.vert?raw';
 import skyFsSource from './shaders/skybox_grad/skybox_grad.frag?raw';
 
+import quadVsSource from './shaders/NDCQuad/NDCQUad.vert?raw';
+import quadFsSource from './shaders/NDCQuad/NDCQuad.frag?raw';
+
 import updateVsSource from './shaders/update/update.vert?raw';
 import updateFsSource from './shaders/update/update.frag?raw';
 
 import drawVsSource from './shaders/draw/draw.vert?raw';
+
 import drawFsSource from './shaders/draw/draw.frag?raw';
 import { createTexture } from "../createGLData.js";
 
@@ -37,7 +41,11 @@ class WebGLRenderer extends Renderer {
         // setup shaders
         this.shader = new Shader(this.gl, vsSource, fsSource);
         this.skyShader = new Shader(this.gl, skyVsSource, skyFsSource);
+        this.quadShader = new Shader(this.gl, quadVsSource, quadFsSource);
         this.updateShader = new Shader(this.gl, updateVsSource, updateFsSource);
+        this.updateShader.use();
+        this.updateShader.setInt("positionTexRead", 0);
+        this.updateShader.setInt("velocityTexRead", 1);
         this.drawShader = new Shader(this.gl, drawVsSource, drawFsSource);
 
         // setup datas
@@ -82,7 +90,7 @@ class WebGLRenderer extends Renderer {
 
     randomInsideSphere(r){
         let result = vec3.create();
-        vec3.random(result, Math.sqrt(Math.random())*r);
+        vec3.random(result, Math.cbrt(Math.random())*r);
         return [result[0], result[1], result[2]];
     }
 
@@ -104,7 +112,25 @@ class WebGLRenderer extends Renderer {
 
     //---------------------------------------
     beforeFrame(){
-        return;
+
+        let gl = this.gl;
+
+        // update values using update shader
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.infoWrite.fb);
+        gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
+
+        this.updateShader.use();
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.infoRead.position);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, this.infoRead.velocity);
+        
+        this.updateShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
+        this.updateShader.setFloat("deltaTime", this.timeDelta);
+        this.renderQuad();
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
     }
 
     //---------------------------------------
@@ -142,11 +168,36 @@ class WebGLRenderer extends Renderer {
         gl.depthMask(true);
         this.drawScene(this.shader);
 
+        // render instanced particles
+        gl.viewport(0, 0,this.width, this.height);
+        gl.depthMask(true);
+        this.drawParticles();
+
         //render background
         gl.viewport(0, 0, this.width, this.height);
         gl.depthMask(false);
         this.skyShader.use();
         this.renderCube();
+
+        // render debug quads
+        let debug_w = this.width * 0.1;
+        gl.viewport(0, 0 ,debug_w, debug_w);
+        gl.depthFunc(gl.ALWAYS);
+        this.quadShader.use();
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.infoRead.position);
+        this.renderQuad();
+
+        let swap = this.infoRead;
+        this.infoRead = this.infoWrite;
+        this.infoWrite = swap;
+    }
+
+    drawParticles(){
+        let gl = this.gl;
+        let model = mat4.create();
+
+        mat4.scale(model, model, vec3.fromValues(0.1, 0.1, 0.1));
     }
 
     // draw geometries with given shader
