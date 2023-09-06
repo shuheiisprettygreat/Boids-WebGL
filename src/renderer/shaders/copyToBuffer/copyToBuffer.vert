@@ -1,7 +1,10 @@
 #version 300 es
 precision mediump float;
+ 
+ uniform sampler2D positionTexRead;
 
-out vec3 positions;
+ layout(location=0) out vec3 positions;
+
 
 vec4 getValueFromTexture(sampler2D tex, vec2 dim, float id){
     float x = mod(id, dim.x);
@@ -11,5 +14,4 @@ vec4 getValueFromTexture(sampler2D tex, vec2 dim, float id){
 }
 
 void main() {
-
 }
