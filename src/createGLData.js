@@ -27,7 +27,7 @@ function createBuffer(gl, sizeOrData, usage){
 /**
  * Create texture object, without mipmap.
  */
-function createTexture(gl, data, internalFormat, format, type, width, height, filter, wrap){
+function createTexture(gl, data, sizePerPixel, internalFormat, format, type, width, height, filter, wrap){
 
     if(!filter){
         filter = gl.NEAREST;
@@ -35,6 +35,11 @@ function createTexture(gl, data, internalFormat, format, type, width, height, fi
 
     if(!wrap){
          wrap = gl.CLAMP_TO_EDGE;
+    }
+
+    if(data){
+        const _data = new Float32Array(width*height*sizePerPixel);
+        _data.set(0, data);
     }
 
     const result = gl.createTexture();
