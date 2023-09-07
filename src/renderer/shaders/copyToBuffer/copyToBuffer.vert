@@ -15,6 +15,6 @@ out vec3 position;
 
 void main() {
     // vec3 pos = getValueFromTexture(positionTexRead, texDimensions, float(gl_VertexID)).xyz;
-    position = vec3(10.0, 0, 0);
-    // positions = vec3(float(gl_VertexID)*0.5, 0, 0);
+    // position = vec3(10.0, 0, 0);
+    position = vec3(float(gl_VertexID)*0.5, 0, 0);
 }

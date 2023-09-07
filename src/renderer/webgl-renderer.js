@@ -99,7 +99,8 @@ class WebGLRenderer extends Renderer {
         this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2};
 
         // setup transform feedback
-        const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.DYNAMIC_DRAW);
+        // const _p = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere3(r)).flat());
+        const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
         const tf = this.createTransformFeedback(gl, positionBuffer);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
