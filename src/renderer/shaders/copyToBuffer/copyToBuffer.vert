@@ -1,8 +1,8 @@
 #version 300 es
 precision mediump float;
- 
-uniform sampler2D positionTexRead;
-uniform vec2 texDimensions;
+
+// uniform sampler2D positionTexRead;
+// uniform vec2 texDimensions;
 
 out vec3 position;
 

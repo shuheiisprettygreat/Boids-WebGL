@@ -99,13 +99,14 @@ class WebGLRenderer extends Renderer {
         this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2};
 
         // setup transform feedback
-        // const _p = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere3(r)).flat());
-        const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
+        const _p = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere3(r)).flat());
+        const positionBuffer = createBuffer(gl, _p, gl.STREAM_COPY);
         const tf = this.createTransformFeedback(gl, positionBuffer);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
         const va = gl.createVertexArray();
         this.copyInfo = {tf:tf, va:va};
+        this.pbuf = positionBuffer;
 
         // setup datas to draw.
         this.drawVa = initCubeVAO(gl);
@@ -127,7 +128,7 @@ class WebGLRenderer extends Renderer {
     randomInsideSphere3(r){
         let result = vec3.create();
         vec3.random(result, Math.cbrt(Math.random())*r);
-        return [result[0], result[1], result[2], 1];
+        return [result[0], result[1], result[2]];
     }
 
     createFramebuffer_2tex(gl, tex1, tex2){
@@ -159,7 +160,6 @@ class WebGLRenderer extends Renderer {
     beforeFrame(){
 
         let gl = this.gl;
-
         // update values using update shader
         // gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
         // gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
@@ -182,14 +182,18 @@ class WebGLRenderer extends Renderer {
         // this.updateInfoWrite = swap;
 
         // write position datas to buffer using transform feedback
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
         this.copyShader.use();
-        this.copyShader.setInt("positionTexRead", 0);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
-        this.copyShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
+        // this.copyShader.setInt("positionTexRead", 0);
+        // gl.activeTexture(gl.TEXTURE0);
+        // gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+        // this.copyShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
 
-        gl.bindVertexArray(this.copyInfo.va);
+        // gl.bindVertexArray(this.copyInfo.va);
 
+        gl.disable(gl.DEPTH_TEST);
+        gl.clear(gl.COLOR_BUFFER_BIT);
         gl.enable(gl.RASTERIZER_DISCARD);
         gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, this.copyInfo.tf);
         gl.beginTransformFeedback(gl.POINTS);
@@ -197,6 +201,12 @@ class WebGLRenderer extends Renderer {
         gl.endTransformFeedback();
         gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, null);
         gl.disable(gl.RASTERIZER_DISCARD); 
+
+        //print tf result
+        const results = new Float32Array(this.nrParticles);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.pbuf);
+        gl.getBufferSubData(gl.ARRAY_BUFFER, 0, results);
+        console.log(results.slice(0, 6));
 
     }
 
