@@ -1,7 +1,10 @@
 #version 300 es
 precision mediump float;
 
-out vec3 positions;
+uniform sampler2D positionTexRead;
+uniform vec2 texDimensions;
+
+out vec3 position;
 
 vec4 getValueFromTexture(sampler2D tex, vec2 dim, float id){
     float x = mod(id, dim.x);
@@ -11,5 +14,8 @@ vec4 getValueFromTexture(sampler2D tex, vec2 dim, float id){
 }
 
 void main() {
-
+    vec3 pos = getValueFromTexture(positionTexRead, texDimensions, float(gl_VertexID)).xyz;
+    position = pos;
+    // position = vec3(10.0, 0, 0);
+    // position = vec3(float(gl_VertexID)*0.5, 0, 0);
 }

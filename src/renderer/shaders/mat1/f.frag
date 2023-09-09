@@ -3,6 +3,7 @@ precision mediump float;
 
 in vec3 iNormal;
 in vec2 iTex;
+in float ivid;
 
 uniform sampler2D tex;
 
