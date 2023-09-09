@@ -15,6 +15,6 @@ void main(){
 
     vec3 position = texture(positionTexRead, texCoord).xyz;
     vec3 velocity = texture(velocityTexRead, texCoord).xyz;
-    // position += velocity * deltaTime;
+    position += velocity * deltaTime;
     FragColor = vec4(position.xyz, 1.0);
 }

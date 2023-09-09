@@ -80,7 +80,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // Initialize particles info
-        this.nrParticles = 100;
+        this.nrParticles = 10000;
         let r = 10;
         const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(r)).flat());
         const velocities = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(2)).flat());
@@ -93,6 +93,7 @@ class WebGLRenderer extends Renderer {
         const positionTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture1 = createTexture(gl, velocities, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+
         const fb1 = this.createFramebuffer_2tex(gl, positionTexture1, velocityTexture1);
         const fb2 = this.createFramebuffer_2tex(gl, positionTexture2, velocityTexture2);
         this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1};
@@ -100,12 +101,12 @@ class WebGLRenderer extends Renderer {
 
         // setup transform feedback
         const _p = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere3(r)).flat());
-        const positionBuffer = createBuffer(gl, _p, gl.STREAM_DRAW);
+        const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_DRAW);
         const tf = this.createTransformFeedback(gl, positionBuffer);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
-        const va = gl.createVertexArray();
-        this.copyInfo = {tf:tf, va:va};
+        
+        this.copyInfo = {tf:tf};
         this.tfpb = positionBuffer;
 
         // setup datas to draw.
@@ -121,6 +122,8 @@ class WebGLRenderer extends Renderer {
         console.log(gl.isTransformFeedback(this.copyInfo.tf));
         let activeInfo = gl.getTransformFeedbackVarying(this.copyShader.id, 0);
         console.log(activeInfo);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
 
     randomInsideSphere4(r){
@@ -164,26 +167,26 @@ class WebGLRenderer extends Renderer {
     beforeFrame(){
 
         let gl = this.gl;
-        // update values using update shader
-        // gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
-        // gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
+        //update values using update shader
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
+        gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
 
-        // this.updateShader.use();
-        // gl.activeTexture(gl.TEXTURE0);
-        // gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
-        // gl.activeTexture(gl.TEXTURE1);
-        // gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
+        this.updateShader.use();
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
         
-        // this.updateShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
-        // this.updateShader.setFloat("deltaTime", this.timeDelta);
-        // this.renderQuad();
+        this.updateShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
+        this.updateShader.setFloat("deltaTime", this.timeDelta/1000.);
+        this.renderQuad();
 
-        // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        // //swap framebuffer
-        // let swap = this.updateInfoRead;
-        // this.updateInfoRead = this.updateInfoWrite;
-        // this.updateInfoWrite = swap;
+        //swap framebuffer
+        let swap = this.updateInfoRead;
+        this.updateInfoRead = this.updateInfoWrite;
+        this.updateInfoWrite = swap;
 
         // write position datas to buffer using transform feedback
         this.copyShader.use();
@@ -193,7 +196,7 @@ class WebGLRenderer extends Renderer {
         gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
 
         gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.bindVertexArray(this.copyInfo.va);
+        gl.bindVertexArray(null);
         // Fragment shader wont run
         gl.enable(gl.RASTERIZER_DISCARD);
         gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, this.copyInfo.tf);
@@ -205,10 +208,11 @@ class WebGLRenderer extends Renderer {
         gl.disable(gl.RASTERIZER_DISCARD);
 
         //print tf result
-        const results = new Float32Array(this.nrParticles);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.pbuf);
-        gl.getBufferSubData(gl.ARRAY_BUFFER, 0, results);
-        console.log(results.slice(0, 6));
+        // const results = new Float32Array(this.nrParticles);
+        
+        // gl.getBufferSubData(gl.ARRAY_BUFFER, 0, results);
+        // console.log(results.slice(0, 6));
+        
 
     }
 
@@ -217,8 +221,8 @@ class WebGLRenderer extends Renderer {
     OnFrame(timestamp, timeDelta){
 
         super.OnFrame();
-
         let gl = this.gl;
+      
         gl.clearColor(0.0, 0.0, 0.0, 1.0);
         gl.clearDepth(1.0);
         gl.enable(gl.DEPTH_TEST);
@@ -277,7 +281,7 @@ class WebGLRenderer extends Renderer {
         let model = mat4.create();
 
         // scale
-        mat4.scale(model, model, vec3.fromValues(0.1, 0.1, 0.1));
+        mat4.scale(model, model, vec3.fromValues(0.03, 0.03, 0.03));
 
         this.drawShader.use();
         this.drawShader.setMat4("model", model);

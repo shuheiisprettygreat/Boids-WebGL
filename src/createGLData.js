@@ -39,7 +39,8 @@ function createTexture(gl, data, sizePerPixel, internalFormat, format, type, wid
 
     if(data){
         const _data = new Float32Array(width*height*sizePerPixel);
-        _data.set(0, data);
+        _data.set(data, 0);
+        data = _data;
     }
 
     const result = gl.createTexture();
