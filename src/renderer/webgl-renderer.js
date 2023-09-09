@@ -99,8 +99,8 @@ class WebGLRenderer extends Renderer {
         this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2};
 
         // setup transform feedback
-        // const _p = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere3(r)).flat());
-        const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.SAMPLER_2D);
+        const _p = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere3(r)).flat());
+        const positionBuffer = createBuffer(gl, _p, gl.STREAM_DRAW);
         const tf = this.createTransformFeedback(gl, positionBuffer);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
@@ -186,14 +186,12 @@ class WebGLRenderer extends Renderer {
         // this.updateInfoWrite = swap;
 
         // write position datas to buffer using transform feedback
-        //debug ----
-        // const debugTf = gl.createTransformFeedback();
-        // gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, debugTf);
-        // gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, this.tfpb);
-        
- 
-        
         this.copyShader.use();
+        this.copyShader.setInt("positionTexRead", 0);
+        this.copyShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.bindVertexArray(this.copyInfo.va);
         // Fragment shader wont run
