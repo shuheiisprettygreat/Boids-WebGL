@@ -2,9 +2,11 @@
 precision mediump float;
 
 uniform sampler2D positionTexRead;
+uniform sampler2D velocityTexRead;
 uniform vec2 texDimensions;
 
 out vec3 position;
+out vec3 velocity;
 
 vec4 getValueFromTexture(sampler2D tex, vec2 dim, float id){
     float x = mod(id, dim.x);
@@ -16,6 +18,9 @@ vec4 getValueFromTexture(sampler2D tex, vec2 dim, float id){
 void main() {
     vec3 pos = getValueFromTexture(positionTexRead, texDimensions, float(gl_VertexID)).xyz;
     position = pos;
+
+    vec3 vel = getValueFromTexture(velocityTexRead, texDimensions, float(gl_VertexID)).xyz;
+    velocity = vel;
     // position = vec3(10.0, 0, 0);
     // position = vec3(float(gl_VertexID)*0.5, 0, 0);
 }

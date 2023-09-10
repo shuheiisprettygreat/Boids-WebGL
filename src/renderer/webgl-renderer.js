@@ -54,8 +54,10 @@ class WebGLRenderer extends Renderer {
         this.setupBoidsParams(this.updateShader);
 
         // copy data from data-texture to buffers. 
-        this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position']);
+        this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity']);
+        this.copyShader.use();
         this.copyShader.setInt("positionTexRead", 0);
+        this.copyShader.setInt("velocityTexRead", 1);
 
         // shader for drawing. 
         this.drawShader = new Shader(this.gl, drawVsSource, drawFsSource);
@@ -96,7 +98,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // Initialize particles info
-        this.nrParticles = 4096*4;
+        this.nrParticles = 4096;
         let r = 1;
         const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(r)).flat());
         const velocities = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(2.0)).flat());
@@ -117,20 +119,28 @@ class WebGLRenderer extends Renderer {
 
         // setup transform feedback
         const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_DRAW);
-        const tf = this.createTransformFeedback(gl, positionBuffer);
+        const velocityBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_DRAW);
+        const tf = this.createTransformFeedback(gl, positionBuffer, velocityBuffer);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
         this.copyInfo = {tf:tf};
 
         // setup datas to draw.
-        this.drawVa = this.parser.vaList[1];
-        gl.bindVertexArray(this.drawVa);
+        const drawVa = this.parser.vaList[1];
+        // const drawVa = initCubeVAO(gl);
+        gl.bindVertexArray(drawVa);
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-            const loc = gl.getAttribLocation(this.drawShader.id, "instancePosition");
-            gl.enableVertexAttribArray(loc);
-            gl.vertexAttribPointer(loc, 3, gl.FLOAT, false, 0, 0);
-            gl.vertexAttribDivisor(loc, 1);
+            gl.enableVertexAttribArray(3);
+            gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribDivisor(3, 1);
+            gl.bindBuffer(gl.ARRAY_BUFFER, velocityBuffer);
+            gl.enableVertexAttribArray(4);
+            gl.vertexAttribPointer(4, 3, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribDivisor(4, 1);
         gl.bindVertexArray(null);
+
+        this.drawInfo = {va:drawVa, size:this.parser.sizeList[1]};
+        // this.drawInfo = {va:drawVa, size:36};
 
         console.log(gl.isTransformFeedback(this.copyInfo.tf));
         let activeInfo = gl.getTransformFeedbackVarying(this.copyShader.id, 0);
@@ -169,10 +179,11 @@ class WebGLRenderer extends Renderer {
         return result;
     }
 
-    createTransformFeedback(gl, buffer){
+    createTransformFeedback(gl, buffer1, buffer2){
         const tf = gl.createTransformFeedback();
         gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, tf);
-        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, buffer);
+        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, buffer1);
+        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, buffer2);
         return tf;
     }
     
@@ -213,6 +224,8 @@ class WebGLRenderer extends Renderer {
         this.copyShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.bindVertexArray(null);
@@ -300,13 +313,13 @@ class WebGLRenderer extends Renderer {
         let model = mat4.create();
 
         // scale
-        mat4.scale(model, model, vec3.fromValues(0.01, 0.01, 0.01));
+        mat4.scale(model, model, vec3.fromValues(0.05, 0.05, 0.05));
 
         this.drawShader.use();
         this.drawShader.setMat4("model", model);
 
-        gl.bindVertexArray(this.drawVa);
-        gl.drawArraysInstanced(gl.TRIANGLES, 0, this.parser.sizeList[1], this.nrParticles);
+        gl.bindVertexArray(this.drawInfo.va);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, this.drawInfo.size, this.nrParticles);
         gl.bindVertexArray(null);
     }
 
