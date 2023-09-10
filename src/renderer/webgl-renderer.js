@@ -66,7 +66,7 @@ class WebGLRenderer extends Renderer {
         });
         
         // setup camera
-        this.camera = new Camera(5, 4, 7, 0, 1, 0, 0, 0, 45);
+        this.camera = new Camera(10, 8, 14, 0, 1, 0, 0, 0, 45);
         this.camera.lookAt(0, 0, 0);
         
         this.parser = new Json2Va(this.gl);
@@ -80,8 +80,8 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // Initialize particles info
-        this.nrParticles = 10000;
-        let r = 10;
+        this.nrParticles = 1000;
+        let r = 4;
         const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(r)).flat());
         const velocities = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(2)).flat());
 
@@ -100,14 +100,12 @@ class WebGLRenderer extends Renderer {
         this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2};
 
         // setup transform feedback
-        const _p = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere3(r)).flat());
         const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_DRAW);
         const tf = this.createTransformFeedback(gl, positionBuffer);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
         
         this.copyInfo = {tf:tf};
-        this.tfpb = positionBuffer;
 
         // setup datas to draw.
         this.drawVa = initCubeVAO(gl);
@@ -126,6 +124,7 @@ class WebGLRenderer extends Renderer {
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
     }
 
+    // helper functions-----------------------------
     randomInsideSphere4(r){
         let result = vec3.create();
         vec3.random(result, Math.cbrt(Math.random())*r);
@@ -143,7 +142,13 @@ class WebGLRenderer extends Renderer {
         gl.bindTexture(gl.TEXTURE_2D, tex1);
         gl.bindFramebuffer(gl.FRAMEBUFFER, result);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex1, 0);
-        // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, tex2, 0);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, tex2, 0);
+        const mrtTarget = [
+            gl.COLOR_ATTACHMENT0,
+            gl.COLOR_ATTACHMENT1,
+        ];
+        gl.drawBuffers(mrtTarget);
+
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         return result;
@@ -176,9 +181,9 @@ class WebGLRenderer extends Renderer {
         gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
-        
         this.updateShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
         this.updateShader.setFloat("deltaTime", this.timeDelta/1000.);
+        this.updateShader.setFloat("nrParticle", this.nrParticles);
         this.renderQuad();
 
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -188,7 +193,7 @@ class WebGLRenderer extends Renderer {
         this.updateInfoRead = this.updateInfoWrite;
         this.updateInfoWrite = swap;
 
-        // write position datas to buffer using transform feedback
+        // write pre-update position datas to buffer using transform feedback
         this.copyShader.use();
         this.copyShader.setInt("positionTexRead", 0);
         this.copyShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
@@ -318,7 +323,7 @@ class WebGLRenderer extends Renderer {
         mat4.scale(model, model, vec3.fromValues(5, 5, 5));
         shader.setMat4("model", model);
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.texture.checker_colored);
+        gl.bindTexture(gl.TEXTURE_2D, this.texture.checker_gray);
         this.renderPlane();
     }
 
