@@ -15,7 +15,9 @@ uniform float coh_k;
 uniform float ali_k;
 uniform float maxForce;
 uniform float maxSpeed;
+uniform float minSpeed;
 uniform float restrictRadius;
+uniform float restrictStrength;
 
 layout(location=0) out vec4 positionColor;
 layout(location=1) out vec4 VelocityColor;
@@ -112,7 +114,7 @@ vec3 constrainArea(vec3 pos, vec3 vel){
     // to center
     const float maxForce = 3.0;
     if(dot(pos,pos) > restrictRadius*restrictRadius){
-        return limit(-pos - vel, maxForce);
+        return limit(-pos - vel, maxForce*restrictStrength);
     }
     return vec3(0.0);
 }
@@ -128,6 +130,7 @@ void main(){
     force += constrainArea(position, velocity);
 
     velocity += force * deltaTime;
+    if(length(velocity) < minSpeed) velocity = normalize(velocity) * minSpeed;
     position += velocity * deltaTime;
 
     positionColor = vec4(position.xyz, 1.0);

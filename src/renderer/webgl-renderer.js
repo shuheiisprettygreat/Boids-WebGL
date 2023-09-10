@@ -79,14 +79,16 @@ class WebGLRenderer extends Renderer {
 
     setupBoidsParams(shader){
         shader.setFloat("sep_radius", 0.05);
-        shader.setFloat("coh_radius", 0.3);
-        shader.setFloat("ali_radius", 0.3);
+        shader.setFloat("coh_radius", 0.15);
+        shader.setFloat("ali_radius", 0.25);
         shader.setFloat("sep_k", 1.0);
-        shader.setFloat("coh_k", 1.0);
-        shader.setFloat("ali_k", 1.0);
-        shader.setFloat("maxForce", 0.6);
+        shader.setFloat("coh_k", 2.0);
+        shader.setFloat("ali_k", 1.5);
+        shader.setFloat("maxForce", 10.0);
         shader.setFloat("maxSpeed", 2.0);
-        shader.setFloat("restrictRadius", 1.0);
+        shader.setFloat("minSpeed", 0.4);
+        shader.setFloat("restrictRadius", 3.0);
+        shader.setFloat("restrictStrength", 0.5);
     }
 
     //---------------------------------------
@@ -94,10 +96,10 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // Initialize particles info
-        this.nrParticles = 1000;
+        this.nrParticles = 4096*4;
         let r = 1;
         const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(r)).flat());
-        const velocities = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(0.2)).flat());
+        const velocities = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(2.0)).flat());
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
@@ -121,7 +123,7 @@ class WebGLRenderer extends Renderer {
         this.copyInfo = {tf:tf};
 
         // setup datas to draw.
-        this.drawVa = initCubeVAO(gl);
+        this.drawVa = this.parser.vaList[1];
         gl.bindVertexArray(this.drawVa);
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             const loc = gl.getAttribLocation(this.drawShader.id, "instancePosition");
@@ -304,7 +306,7 @@ class WebGLRenderer extends Renderer {
         this.drawShader.setMat4("model", model);
 
         gl.bindVertexArray(this.drawVa);
-        gl.drawArraysInstanced(gl.TRIANGLES, 0, 36, this.nrParticles);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, this.parser.sizeList[1], this.nrParticles);
         gl.bindVertexArray(null);
     }
 
