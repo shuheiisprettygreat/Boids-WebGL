@@ -70,7 +70,7 @@ class WebGLRenderer extends Renderer {
         });
         
         // setup camera
-        this.camera = new Camera(3, 2.5, 4, 0, 1, 0, 0, 0, 45);
+        this.camera = new Camera(5, 3, 7, 0, 1, 0, 0, 0, 45);
         this.camera.lookAt(0, 0, 0);
         
         this.parser = new Json2Va(this.gl);

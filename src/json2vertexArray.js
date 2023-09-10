@@ -13,7 +13,7 @@ class Json2Va{
         jsons.forEach(text => {
             const data = JSON.parse(text);
             const va = this.data2va(data);
-            this.sizeList.push(data["mVertexPoints"].length);
+            this.sizeList.push(data["mVertexPoints"].length / 3);
             this.vaList.push(va);
         });
 
