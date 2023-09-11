@@ -19,13 +19,16 @@ import quadFsSource from './shaders/NDCQuad/NDCQuad.frag?raw';
 import updateVsSource from './shaders/update/update.vert?raw';
 import updateFsSource from './shaders/update/update.frag?raw';
 
+import hashingVsSource from './shaders/hashing/hashing.vert?raw';
+import hashingFsSource from './shaders/hashing/hashing.frag?raw';
+
 import copyToBufferVsSource from './shaders/copyToBuffer/copyToBuffer.vert?raw';
 import copyToBufferFsSource from './shaders/copyToBuffer/copyToBuffer.frag?raw';
 
 import drawVsSource from './shaders/draw/draw.vert?raw';
 import drawFsSource from './shaders/draw/draw.frag?raw';
 
-import { createBuffer, createTexture, createVertexArray } from "../createGLData.js";
+import { createBuffer, createFramebuffer, createTexture, createVertexArray } from "../createGLData.js";
 
 
 class WebGLRenderer extends Renderer {
@@ -52,6 +55,11 @@ class WebGLRenderer extends Renderer {
         this.updateShader.setInt("positionTexRead", 0);
         this.updateShader.setInt("velocityTexRead", 1);
         this.setupBoidsParams(this.updateShader);
+
+        // shader to update datas using texture
+        this.hashingShader = new Shader(this.gl, hashingVsSource, hashingFsSource);
+        this.hashingShader.use();
+        this.hashingShader.setInt("positionTexRead", 0);
 
         // copy data from data-texture to buffers. 
         this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity']);
@@ -118,7 +126,10 @@ class WebGLRenderer extends Renderer {
         const velocityTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
 
         // setup datas for spartial hashing
-
+        const HashedParticleTexture = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const fb = createFramebuffer(gl, HashedParticleTexture);
+        this.hashingInfo = {fb:fb, tex:HashedParticleTexture};
+        
         // setup datas for sorting
 
         // setup update framebuffer. Boids need to track positions and velocty
@@ -210,26 +221,36 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
         //update values using update shader
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
-        gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
+            gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
 
-        this.updateShader.use();
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
-        this.updateShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
-        this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
-        this.updateShader.setFloat("nrParticle", this.nrParticles);
-        this.renderQuad();
-
+            this.updateShader.use();
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
+            this.updateShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
+            this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
+            this.updateShader.setFloat("nrParticle", this.nrParticles);
+            this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        //swap framebuffer
         let swap = this.updateInfoRead;
         this.updateInfoRead = this.updateInfoWrite;
         this.updateInfoWrite = swap;
 
-        // write pre-update position datas to buffer using transform feedback
+        // compute hash of each particle.
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.hashingInfo.fb);
+            gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
+            this.hashingShader.use();
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+            this.hashingShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
+            this.hashingShader.setFloat("gridSize", this.maxPerceptionRadius);
+            this.hashingShader.setFloat("hashSize", 10000.0);
+            this.renderQuad();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+                // write pre-update position datas to buffer using transform feedback
         this.copyShader.use();
         this.copyShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
         gl.activeTexture(gl.TEXTURE0);
@@ -314,6 +335,11 @@ class WebGLRenderer extends Renderer {
         this.quadShader.use();
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+        this.renderQuad();
+
+        gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.hashingInfo.tex);
         this.renderQuad();
 
     }
