@@ -22,6 +22,9 @@ import updateFsSource from './shaders/update/update.frag?raw';
 import hashingVsSource from './shaders/hashing/hashing.vert?raw';
 import hashingFsSource from './shaders/hashing/hashing.frag?raw';
 
+import bitonicSortVsSource from './shaders/bitonicSort/bitonicSort.vert?raw';
+import bitonicSortFsSource from './shaders/bitonicSort/bitonicSort.frag?raw';
+
 import copyToBufferVsSource from './shaders/copyToBuffer/copyToBuffer.vert?raw';
 import copyToBufferFsSource from './shaders/copyToBuffer/copyToBuffer.frag?raw';
 
@@ -56,10 +59,15 @@ class WebGLRenderer extends Renderer {
         this.updateShader.setInt("velocityTexRead", 1);
         this.setupBoidsParams(this.updateShader);
 
-        // shader to update datas using texture
+        // shader to hash position
         this.hashingShader = new Shader(this.gl, hashingVsSource, hashingFsSource);
         this.hashingShader.use();
         this.hashingShader.setInt("positionTexRead", 0);
+
+        // shader to sort hashed values
+        this.bitonicSortShader = new Shader(this.gl, bitonicSortVsSource, bitonicSortFsSource);
+        this.bitonicSortShader.use();
+        this.bitonicSortShader.setInt("indexAndHashTex", 0);
 
         // copy data from data-texture to buffers. 
         this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity']);
@@ -127,12 +135,13 @@ class WebGLRenderer extends Renderer {
         const velocityTexture1 = createTexture(gl, velocities, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
 
-        // setup datas for spartial hashing
-        const HashedParticleTexture = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const fb = createFramebuffer(gl, HashedParticleTexture);
-        this.hashingInfo = {fb:fb, tex:HashedParticleTexture};
-        
-        // setup datas for sorting
+        // setup datas for spatial hashing and bitonic sort
+        const sortTexture1 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const sortTexture2 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const fbSort1 = createFramebuffer(gl, sortTexture1);
+        const fbSort2 = createFramebuffer(gl, sortTexture2);
+        this.sortInfoRead = {fb:fbSort1, tex:sortTexture1};
+        this.sortInfoWrite = {fb:fbSort2, tex:sortTexture2};
 
         // setup update framebuffer. Boids need to track positions and velocty
         const fb1 = this.createFramebuffer_2tex(gl, positionTexture1, velocityTexture1);
@@ -164,8 +173,9 @@ class WebGLRenderer extends Renderer {
         this.drawInfo = {va:drawVa, size:this.parser.sizeList[1]};
 
         // setup hashing info
-        // must be power of 2
-        this.hashDimension = 2042; 
+        // hashDimension^2 is size of hashTable.
+        // resonable limit is < 4096, which is ample
+        this.hashDimension = 2042;
 
     }
 
@@ -219,7 +229,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // compute hash of each particle.
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.hashingInfo.fb);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.sortInfoWrite.fb);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.use();
             gl.activeTexture(gl.TEXTURE0);
@@ -229,6 +239,12 @@ class WebGLRenderer extends Renderer {
             this.hashingShader.setFloat("hashSize", this.hashDimension * this.hashDimension);
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        let swap = this.sortInfoRead;
+        this.sortInfoRead = this.sortInfoWrite;
+        this.sortInfoWrite = swap;
+
+        // sort with 
 
         //update values using update shader
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
@@ -245,7 +261,7 @@ class WebGLRenderer extends Renderer {
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        let swap = this.updateInfoRead;
+        swap = this.updateInfoRead;
         this.updateInfoRead = this.updateInfoWrite;
         this.updateInfoWrite = swap;
 
@@ -338,7 +354,7 @@ class WebGLRenderer extends Renderer {
 
         gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.hashingInfo.tex);
+        gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
         this.renderQuad();
 
     }
