@@ -66,10 +66,9 @@ vec3 culcForce(vec3 position, vec3 velocity){
     vec3 force = vec3(0.0);
 
     for(float i=0.0; i<float(nrParticle); i++){
-        vec2 texCoord = vec2(mod(i, texDimentions.x), floor(i / texDimentions.x));
-        texCoord /= texDimentions;
-        vec3 posOther = texture(positionTexRead, texCoord).xyz;
-        vec3 velOther = texture(velocityTexRead, texCoord).xyz;
+        ivec2 texCoord = ivec2(mod(i, texDimentions.x), floor(i / texDimentions.x));
+        vec3 posOther = texelFetch(positionTexRead, texCoord, 0).xyz;
+        vec3 velOther = texelFetch(velocityTexRead, texCoord, 0).xyz;
         vec3 r = position - posOther;
         float dist2 = dot(r,r);
 
@@ -123,8 +122,10 @@ void main(){
 
     vec2 texCoord =  gl_FragCoord.xy / texDimentions;
 
-    vec3 position = texture(positionTexRead, texCoord).xyz;
-    vec3 velocity = texture(velocityTexRead, texCoord).xyz;
+    // vec3 position = texture(positionTexRead, texCoord).xyz;
+    // vec3 velocity = texture(velocityTexRead, texCoord).xyz;
+    vec3 position = texelFetch(positionTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
+    vec3 velocity = texelFetch(velocityTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
 
     vec3 force = culcForce(position, velocity);
     force += constrainArea(position, velocity);

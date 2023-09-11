@@ -247,7 +247,7 @@ class WebGLRenderer extends Renderer {
 
         // bitonic sort
         this.bitonicSortShader.use();
-        this.bitonicSortShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
+        this.bitonicSortShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
         this.bitonicSortShader.setVec2("invTexDimensions", 1.0/this.dataTextureWidth, 1.0/this.dataTextureHeight);
         gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
         gl.activeTexture(gl.TEXTURE0);

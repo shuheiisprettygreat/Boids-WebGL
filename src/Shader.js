@@ -50,6 +50,10 @@ class Shader{
         gl.uniform2f(gl.getUniformLocation(this.id, name), x, y);
     }
 
+    setIVec2(name, x, y) {
+        this.gl.uniform2i(this.gl.getUniformLocation(this.id, name), x, y);
+    }
+
     setVec3(name, x, y, z) {
         let gl = this.gl;
         gl.uniform3f(gl.getUniformLocation(this.id, name), x, y, z);
