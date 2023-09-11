@@ -67,7 +67,7 @@ class WebGLRenderer extends Renderer {
         // shader to sort hashed values
         this.bitonicSortShader = new Shader(this.gl, bitonicSortVsSource, bitonicSortFsSource);
         this.bitonicSortShader.use();
-        this.bitonicSortShader.setInt("indexAndHashTex", 0);
+        this.bitonicSortShader.setInt("texRead", 0);
 
         // copy data from data-texture to buffers. 
         this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity']);
@@ -120,7 +120,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // Initialize particles info / should be power of 2 (required for bitonic sort)
-        this.nrParticles = 4096 * 2;
+        this.nrParticles = 4096;
         let initialPosisionRadius = 1.0;
         let initialVelocityRadius = 2.0
         const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(initialPosisionRadius)).flat());
@@ -140,6 +140,7 @@ class WebGLRenderer extends Renderer {
         const sortTexture2 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const fbSort1 = createFramebuffer(gl, sortTexture1);
         const fbSort2 = createFramebuffer(gl, sortTexture2);
+        this.exponentNrParticle = Math.log2(this.nrParticles);
         this.sortInfoRead = {fb:fbSort1, tex:sortTexture1};
         this.sortInfoWrite = {fb:fbSort2, tex:sortTexture2};
 
@@ -234,7 +235,7 @@ class WebGLRenderer extends Renderer {
             this.hashingShader.use();
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
-            this.hashingShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
+            this.hashingShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.setFloat("gridSize", this.maxPerceptionRadius);
             this.hashingShader.setFloat("hashSize", this.hashDimension * this.hashDimension);
             this.renderQuad();
@@ -244,7 +245,26 @@ class WebGLRenderer extends Renderer {
         this.sortInfoRead = this.sortInfoWrite;
         this.sortInfoWrite = swap;
 
-        // sort with 
+        // bitonic sort
+        this.bitonicSortShader.use();
+        this.bitonicSortShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
+        this.bitonicSortShader.setVec2("invTexDimensions", 1.0/this.dataTextureWidth, 1.0/this.dataTextureHeight);
+        gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
+        gl.activeTexture(gl.TEXTURE0);
+        for(let stage=1; stage<=this.exponentNrParticle; stage++){
+            this.bitonicSortShader.setInt("stage", stage);
+            for(let offsetExp = stage-1; offsetExp >= 0; offsetExp--){
+                this.bitonicSortShader.setInt("offsetExp", offsetExp);
+                this.bitonicSortShader.setInt("offset", 1<<offsetExp);
+                gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.sortInfoWrite.fb);
+                this.renderQuad();
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                swap = this.sortInfoRead;
+                this.sortInfoRead = this.sortInfoWrite;
+                this.sortInfoWrite = swap;
+            }
+        }
 
         //update values using update shader
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
@@ -352,7 +372,7 @@ class WebGLRenderer extends Renderer {
         gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
         this.renderQuad();
 
-        gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
+        gl.viewport(debug_w*1.2, 0 ,debug_w*4, debug_w*4);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
         this.renderQuad();

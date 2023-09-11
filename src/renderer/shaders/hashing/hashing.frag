@@ -2,15 +2,15 @@
 precision mediump float;
 
 uniform sampler2D positionTexRead;
-uniform vec2 texDimentions;
+uniform vec2 texDimensions;
 uniform float gridSize;
 uniform float hashSize;
 
 layout(location=0) out vec4 FragColor;
 
-#define P1 842167.0
-#define P2 881477.0
-#define P3 742219.0
+#define P1 842167
+#define P2 881477
+#define P3 742219
 
 vec3 pos2grid(vec3 v){
     vec3 result = floor(v / gridSize);
@@ -21,7 +21,7 @@ vec3 pos2grid(vec3 v){
 }
 
 float grid2hash(vec3 grid){
-    return mod(float(int(grid.x*P1) ^ int(grid.y*P2) ^ int(grid.z*P3)), hashSize);
+    return mod(float((int(grid.x)*P1) ^ (int(grid.y)*P2) ^ (int(grid.z)*P3)), hashSize);
 }
 
 float pos2hash(vec3 pos){
@@ -30,11 +30,11 @@ float pos2hash(vec3 pos){
 
 void main(){
 
-    vec2 texCoord =  gl_FragCoord.xy / texDimentions;
+    vec2 texCoord =  gl_FragCoord.xy / texDimensions;
     vec3 position = texture(positionTexRead, texCoord).xyz;
 
     float hash = pos2hash(position);
 
-    float index = texDimentions.x*gl_FragCoord.y + gl_FragCoord.x;
+    float index = texDimensions.x*gl_FragCoord.y + gl_FragCoord.x;
     FragColor = vec4(index, hash, 0, 1.0);
 }

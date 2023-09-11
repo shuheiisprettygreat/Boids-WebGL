@@ -1,37 +1,45 @@
 #version 300 es
 precision mediump float;
 
-uniform sampler2D positionTexRead;
-uniform vec2 texDimentions;
-uniform float gridSize;
-uniform float hashSize;
+uniform sampler2D texRead;
+uniform vec2 texDimensions;
+uniform vec2 invTexDimensions;
+uniform int stage;
+uniform int offsetExp;
+uniform int offset;
 
 layout(location=0) out vec4 FragColor;
 
-#define P1 842167.0
-#define P2 881477.0
-#define P3 742219.0
-
-vec3 pos2grid(vec3 v){
-    vec3 result = floor(v / gridSize);
-    return result;
-}
-
-float grid2hash(vec3 grid){
-    return abs(mod(float(int(grid.x*P1) ^ int(grid.y*P2) ^ int(grid.z*P3)), hashSize));
-}
-
-float pos2hash(vec3 pos){
-    return grid2hash(pos2grid(pos));
+vec4 sampleTex(int i){
+    vec2 texCoords;
+    float fi = float(i);
+    texCoords.x = mod(fi, texDimensions.x);
+    texCoords.y = floor(fi * invTexDimensions.x);
+    texCoords = (texCoords + 0.5) * invTexDimensions;
+    return texture(texRead, texCoords);
 }
 
 void main(){
+    int i = int(texDimensions.x*gl_FragCoord.y + gl_FragCoord.x);
+    bool b1 = (i >> stage & 1) == 0;
+    bool b2 = (i%(offset<<1)) >> offsetExp == 0;
 
-    vec2 texCoord =  gl_FragCoord.xy / texDimentions;
-    vec3 position = texture(positionTexRead, texCoord).xyz;
+    vec4 hashedParticle_i = texture(texRead, gl_FragCoord.xy * invTexDimensions);
+    vec4 hashedParticle_j = sampleTex(b2 ? i+offset : i-offset);
 
-    float hash = pos2hash(position);
+    bool isInOrder = hashedParticle_i.y <= hashedParticle_j.y;
+    bool isInReverseOrder = hashedParticle_i.y >= hashedParticle_j.y;
 
-    float index = texDimentions.x*gl_FragCoord.y + gl_FragCoord.x;
-    FragColor = vec4(index, hash, 0, 1.0);
+    if(isInOrder && isInReverseOrder){
+        FragColor = hashedParticle_j;
+        return;
+    }
+
+    isInOrder = b1==b2 ? isInOrder : !isInOrder;
+    if(isInOrder){
+        FragColor = hashedParticle_i;
+    } else {
+        FragColor = hashedParticle_j;
+    }
+
 }

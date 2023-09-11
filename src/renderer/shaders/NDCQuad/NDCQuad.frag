@@ -11,4 +11,6 @@ void main()
 {             
     vec4 col = texture(tex, iTex);
     FragColor = col;
+    // float gray = col.y / 4169764.0;
+    // FragColor = vec4(gray, gray, gray, 1.0);
 }
