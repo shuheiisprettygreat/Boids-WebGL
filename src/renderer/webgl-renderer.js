@@ -80,16 +80,21 @@ class WebGLRenderer extends Renderer {
     }
 
     setupBoidsParams(shader){
-        shader.setFloat("sep_radius", 0.05);
-        shader.setFloat("coh_radius", 0.15);
-        shader.setFloat("ali_radius", 0.25);
+        let sep_radius = 0.05;
+        let coh_radius = 0.15;
+        let ali_radius = 0.25;
+        // keep maximum range for grid sorting.
+        this.maxPerceptionRadius = Math.max(sep_radius, coh_radius, ali_radius);
+        shader.setFloat("sep_radius", sep_radius);
+        shader.setFloat("coh_radius", coh_radius);
+        shader.setFloat("ali_radius", ali_radius);
         shader.setFloat("sep_k", 1.0);
         shader.setFloat("coh_k", 2.0);
         shader.setFloat("ali_k", 1.5);
         shader.setFloat("maxForce", 10.0);
         shader.setFloat("maxSpeed", 2.0);
         shader.setFloat("minSpeed", 0.4);
-        shader.setFloat("restrictRadius", 3.0);
+        shader.setFloat("restrictRadius", 4.0);
         shader.setFloat("restrictStrength", 0.5);
     }
 
@@ -98,7 +103,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // Initialize particles info
-        this.nrParticles = 4096;
+        this.nrParticles = 4096 * 4;
         let r = 1;
         const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(r)).flat());
         const velocities = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(2.0)).flat());
@@ -112,6 +117,11 @@ class WebGLRenderer extends Renderer {
         const velocityTexture1 = createTexture(gl, velocities, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
 
+        // setup datas for spartial hashing
+
+        // setup datas for sorting
+
+        // setup update framebuffer. Boids need to track positions and velocty
         const fb1 = this.createFramebuffer_2tex(gl, positionTexture1, velocityTexture1);
         const fb2 = this.createFramebuffer_2tex(gl, positionTexture2, velocityTexture2);
         this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1};
@@ -329,22 +339,6 @@ class WebGLRenderer extends Renderer {
         let model = mat4.create();
         shader.use();
         
-        // model = mat4.create();
-        // mat4.translate(model, model, vec3.fromValues(0, 0, 0));
-        // mat4.rotate(model, model, 0, vec3.fromValues(0, 1, 0));
-        // shader.setMat4("model", model);
-        // gl.activeTexture(gl.TEXTURE0);
-        // gl.bindTexture(gl.TEXTURE_2D, this.texture.checker_gray);
-        // this.renderCube();
-
-        // model = mat4.create();
-        // mat4.translate(model, model, vec3.fromValues(1.8, -0.6, 0.6));
-        // mat4.scale(model, model, vec3.fromValues(0.4, 0.4, 0.4));
-        // shader.setMat4("model", model);
-        // gl.activeTexture(gl.TEXTURE0);
-        // gl.bindTexture(gl.TEXTURE_2D, this.texture.checker_gray);
-        // this.renderCustom();
-
         model = mat4.create();
         mat4.translate(model, model, vec3.fromValues(0, -1.0, 0));
         mat4.scale(model, model, vec3.fromValues(5, 5, 5));
