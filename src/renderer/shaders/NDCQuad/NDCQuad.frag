@@ -10,6 +10,7 @@ out vec4 FragColor;
 void main()
 {             
     vec4 col = texture(tex, iTex);
-    float gray = col.y / 4169764.0;
-    FragColor = vec4(gray, gray, gray, 1.0);
+    FragColor = col;
+    // float gray = col.y / 4169764.0;
+    // FragColor = vec4(gray, gray, gray, 1.0);
 }

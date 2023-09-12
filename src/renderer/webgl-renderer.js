@@ -25,6 +25,9 @@ import hashingFsSource from './shaders/hashing/hashing.frag?raw';
 import bitonicSortVsSource from './shaders/bitonicSort/bitonicSort.vert?raw';
 import bitonicSortFsSource from './shaders/bitonicSort/bitonicSort.frag?raw';
 
+import hashToIndicesVsSource from './shaders/hashToIndices/hashToIndices.vert?raw';
+import hashToIndicesFsSource from './shaders/hashToIndices/hashToIndices.frag?raw';
+
 import copyToBufferVsSource from './shaders/copyToBuffer/copyToBuffer.vert?raw';
 import copyToBufferFsSource from './shaders/copyToBuffer/copyToBuffer.frag?raw';
 
@@ -68,6 +71,11 @@ class WebGLRenderer extends Renderer {
         this.bitonicSortShader = new Shader(this.gl, bitonicSortVsSource, bitonicSortFsSource);
         this.bitonicSortShader.use();
         this.bitonicSortShader.setInt("texRead", 0);
+        
+        // shader to save index range sharing same hash.
+        this.hash2indicesShader = new Shader(this.gl, hashToIndicesVsSource, hashToIndicesFsSource);
+        this.hash2indicesShader.use();
+        this.hash2indicesShader.setInt("sortedTex", 0);
 
         // copy data from data-texture to buffers. 
         this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity']);
@@ -116,6 +124,7 @@ class WebGLRenderer extends Renderer {
     }
 
     //---------------------------------------
+    
     init(){
         let gl = this.gl;
 
@@ -143,7 +152,7 @@ class WebGLRenderer extends Renderer {
         // setup hashing info
         // hashDimension^2 is size of hashTable.
         // resonable limit is < 4096 because of device specific limiatation, but this is ample.
-        this.hashDimension = 2042;
+        this.hashDimension = 2048;
 
         const sortTexture1 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const sortTexture2 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
@@ -154,8 +163,9 @@ class WebGLRenderer extends Renderer {
         this.sortInfoWrite = {fb:fbSort2, tex:sortTexture2};
 
         // setup dats for hash-to-indices table
-        const indecisTexture1 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.hashDimension, this.hashDimension);
-        const fbIndecis1 = createFramebuffer(gl, indecisTexture1);
+        const hash2indicesTexture = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.hashDimension, this.hashDimension);
+        const fbIndices = createFramebuffer(gl, hash2indicesTexture);
+        this.hash2indicesInfo = {fb: fbIndices, tex:hash2indicesTexture};
 
         // setup transform feedback
         const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_DRAW);
@@ -180,7 +190,7 @@ class WebGLRenderer extends Renderer {
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         this.drawInfo = {va:drawVa, size:this.parser.sizeList[1]};
 
-}
+    }
 
     // helper functions-----------------------------
     randomInsideSphere4(r){
@@ -231,7 +241,7 @@ class WebGLRenderer extends Renderer {
 
         let gl = this.gl;
 
-        // compute hash of each particle.
+        // compute hash of each particle. ==================================
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.sortInfoWrite.fb);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.use();
@@ -247,7 +257,8 @@ class WebGLRenderer extends Renderer {
         this.sortInfoRead = this.sortInfoWrite;
         this.sortInfoWrite = swap;
 
-        // bitonic sort
+
+        // bitonic sort  ==================================
         this.bitonicSortShader.use();
         this.bitonicSortShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
         this.bitonicSortShader.setVec2("invTexDimensions", 1.0/this.dataTextureWidth, 1.0/this.dataTextureHeight);
@@ -268,12 +279,27 @@ class WebGLRenderer extends Renderer {
             }
         }
 
-        // 
+        // write range of indices which their particles sharing same hash, using hash-sorted indices. ==============
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.hash2indicesInfo.fb);
+            this.hash2indicesShader.use();
+            this.hash2indicesShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
+            this.hash2indicesShader.setInt("nrParticles", this.nrParticles);
+            this.hash2indicesShader.setFloat("hashDimension", this.hashDimension);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+            gl.viewport(0, 0, this.hashDimension, this.hashDimension);
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.ONE, gl.ONE);
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.POINTS, 0, this.nrParticles);
+            gl.disable(gl.BLEND);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        //update values using update shader
+
+        //update values using update shader ==================================
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
-
             this.updateShader.use();
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
@@ -289,7 +315,8 @@ class WebGLRenderer extends Renderer {
         this.updateInfoRead = this.updateInfoWrite;
         this.updateInfoWrite = swap;
 
-        // write pre-update position datas to buffer using transform feedback
+
+        // write pre-update position datas to buffer using transform feedback ==================================
         this.copyShader.use();
         this.copyShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
         gl.activeTexture(gl.TEXTURE0);
@@ -299,7 +326,6 @@ class WebGLRenderer extends Renderer {
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.bindVertexArray(null);
-        // Fragment shader wont run
         gl.enable(gl.RASTERIZER_DISCARD);
         gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, this.copyInfo.tf);
         gl.beginTransformFeedback(gl.POINTS);
@@ -379,6 +405,11 @@ class WebGLRenderer extends Renderer {
         gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+        this.renderQuad();
+
+        gl.viewport(debug_w*2.4, 0 ,debug_w, debug_w);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.tex);
         this.renderQuad();
 
     }
