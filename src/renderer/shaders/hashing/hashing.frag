@@ -12,12 +12,19 @@ layout(location=0) out vec4 FragColor;
 #define P2 881477
 #define P3 742219
 
+ivec3 grid2positiveGrid(ivec3 grid){
+    grid.x = grid.x<0 ? -grid.x*2 : grid.x*2+1;
+    grid.y = grid.y<0 ? -grid.y*2 : grid.y*2+1;
+    grid.z = grid.z<0 ? -grid.z*2 : grid.z*2+1;
+    return grid;
+}
+
 ivec3 pos2grid(vec3 v){
-    ivec3 result = ivec3(floor(v / gridSize));
-    result.x = result.x<0 ? -result.x*2 : result.x*2+1;
-    result.y = result.y<0 ? -result.y*2 : result.y*2+1;
-    result.z = result.z<0 ? -result.z*2 : result.z*2+1;
-    return result;
+    return ivec3(floor(v / gridSize));
+}
+
+ivec3 pos2positiveGrid(vec3 v){
+    return grid2positiveGrid(pos2grid(v));
 }
 
 int grid2hash(ivec3 grid){
@@ -25,7 +32,7 @@ int grid2hash(ivec3 grid){
 }
 
 int pos2hash(vec3 pos){
-    return grid2hash(pos2grid(pos));
+    return grid2hash(pos2positiveGrid(pos));
 }
 
 void main(){
