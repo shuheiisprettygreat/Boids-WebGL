@@ -284,13 +284,13 @@ class WebGLRenderer extends Renderer {
             this.hash2indicesShader.use();
             this.hash2indicesShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.hash2indicesShader.setInt("nrParticles", this.nrParticles);
-            this.hash2indicesShader.setFloat("hashDimension", this.hashDimension);
+            this.hash2indicesShader.setInt("hashDimension", this.hashDimension);
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
             gl.viewport(0, 0, this.hashDimension, this.hashDimension);
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.ONE, gl.ONE);
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArrays(gl.POINTS, 0, this.nrParticles);
             gl.disable(gl.BLEND);

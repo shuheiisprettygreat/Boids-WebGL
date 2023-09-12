@@ -15,6 +15,11 @@ vec4 sampleTex(int i){
     return  texelFetch(texRead, texCoords, 0);
 }
 
+bool compare(vec2 p, vec2 q){
+    // Compare hash, or id when hash are equal.W
+    return (p.y==q.y) ? p.x <= q.x : p.y <= q.y;
+}
+
 void main(){
     ivec2 ifrag = ivec2(gl_FragCoord.xy);
     int i = texDimensions.x*ifrag.y + ifrag.x;
@@ -24,13 +29,7 @@ void main(){
     vec4 hashedParticle_i = texelFetch(texRead, ifrag, 0);
     vec4 hashedParticle_j = sampleTex(b2 ? i+offset : i-offset);
 
-    bool isInOrder = hashedParticle_i.y <= hashedParticle_j.y;
-    bool isInReverseOrder = hashedParticle_j.y <= hashedParticle_i.y;
-
-    if(isInOrder && isInReverseOrder){
-        FragColor = hashedParticle_j;
-        return;
-    }
+    bool isInOrder = compare(hashedParticle_i.xy, hashedParticle_j.xy);
 
     isInOrder = b1==b2 ? isInOrder : !isInOrder;
     if(isInOrder){
