@@ -103,9 +103,19 @@ class WebGLRenderer extends Renderer {
 
         // extensions
         const ext = this.gl.getExtension('EXT_color_buffer_float');
+
+        // show some gl information
+        const maxTextureUnits = this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
+        const maxVertexShaderTextureUnits = this.gl.getParameter(this.gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
+        const maxFragmentShaderTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
+
+        console.log("maxTextureUnits", maxTextureUnits);
+        console.log("maxVertexShaderTextureUnits:", maxVertexShaderTextureUnits );
+        console.log("maxFragmentShaderTextureUnits:", maxFragmentShaderTextureUnits);
     }
 
     setupBoidsParams(shader){
+        shader.use();
         let sep_radius = 0.05;
         let coh_radius = 0.15;
         let ali_radius = 0.25;
@@ -131,7 +141,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // Initialize particles info / should be power of 2 (required for bitonic sort)
-        this.nrParticles = 4096;
+        this.nrParticles = 4096 * 4;
         let initialPosisionRadius = 1.0;
         let initialVelocityRadius = 2.0
         const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(initialPosisionRadius)).flat());
@@ -292,7 +302,7 @@ class WebGLRenderer extends Renderer {
             gl.viewport(0, 0, this.hashDimension, this.hashDimension);
             gl.enable(gl.BLEND);
             gl.blendFunc(gl.ONE, gl.ONE);
-            gl.clearColor(0.0, 0.0, 0.0, 0.0);
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArrays(gl.POINTS, 0, this.nrParticles);
             gl.disable(gl.BLEND);

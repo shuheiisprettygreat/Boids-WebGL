@@ -28,7 +28,7 @@ ivec3 pos2positiveGrid(vec3 v){
 }
 
 int grid2hash(ivec3 grid){
-    return (grid.x*P1) ^ (grid.y*P2) ^ (grid.z*P3) % hashSize;
+    return ((grid.x*P1) ^ (grid.y*P2) ^ (grid.z*P3)) % hashSize;
 }
 
 int pos2hash(vec3 pos){
