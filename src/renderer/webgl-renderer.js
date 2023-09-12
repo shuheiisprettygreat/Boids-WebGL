@@ -112,6 +112,10 @@ class WebGLRenderer extends Renderer {
         console.log("maxTextureUnits", maxTextureUnits);
         console.log("maxVertexShaderTextureUnits:", maxVertexShaderTextureUnits );
         console.log("maxFragmentShaderTextureUnits:", maxFragmentShaderTextureUnits);
+
+        if(!ext){
+            console.log("color buffer float extension not found");
+        }
     }
 
     setupBoidsParams(shader){
@@ -166,8 +170,8 @@ class WebGLRenderer extends Renderer {
         // resonable limit is < 4096 because of device specific limiatation, but this is ample.
         this.hashDimension = 2048;
 
-        const sortTexture1 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const sortTexture2 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const sortTexture1 = createTexture(gl, null,  2, gl.RG32F, gl.RG, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const sortTexture2 = createTexture(gl, null,  2, gl.RG32F, gl.RG, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const fbSort1 = createFramebuffer(gl, sortTexture1);
         const fbSort2 = createFramebuffer(gl, sortTexture2);
         this.exponentNrParticle = Math.log2(this.nrParticles);
@@ -175,13 +179,13 @@ class WebGLRenderer extends Renderer {
         this.sortInfoWrite = {fb:fbSort2, tex:sortTexture2};
 
         // setup dats for hash-to-indices table
-        const hash2indicesTexture = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.hashDimension, this.hashDimension);
+        const hash2indicesTexture = createTexture(gl, null,  2, gl.RG32F, gl.RG, gl.FLOAT, this.hashDimension, this.hashDimension);
         const fbIndices = createFramebuffer(gl, hash2indicesTexture);
         this.hash2indicesInfo = {fb: fbIndices, tex:hash2indicesTexture};
 
         // setup transform feedback
-        const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_DRAW);
-        const velocityBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_DRAW);
+        const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
+        const velocityBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
         const tf = this.createTransformFeedback(gl, positionBuffer, velocityBuffer);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
@@ -311,6 +315,8 @@ class WebGLRenderer extends Renderer {
 
         //update values using update shader ==================================
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
+            // gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            // gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.use();
             gl.activeTexture(gl.TEXTURE0);
