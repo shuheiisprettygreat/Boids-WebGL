@@ -121,15 +121,15 @@ vec3 culcForce(vec3 position, vec3 velocity){
 
     }}}
     
-    // if(sep_velSum != vec3(0.0)){
-    //     vec3 desiredVel = limit(sep_velSum, maxSpeed);
-    //     force += limit(desiredVel - velocity, maxForce) * sep_k;
-    // }
+    if(sep_velSum != vec3(0.0)){
+        vec3 desiredVel = limit(sep_velSum, maxSpeed);
+        force += limit(desiredVel - velocity, maxForce) * sep_k;
+    }
 
-    // if(coh_cnt != 0){
-    //     vec3 desiredVel = limit(coh_posSum/float(coh_cnt) - position, maxSpeed);
-    //     force += limit(desiredVel - velocity, maxForce) * coh_k;
-    // }
+    if(coh_cnt != 0){
+        vec3 desiredVel = limit(coh_posSum/float(coh_cnt) - position, maxSpeed);
+        force += limit(desiredVel - velocity, maxForce) * coh_k;
+    }
 
     if(ali_cnt != 0){
         vec3 desiredVel = ali_velSum / float(ali_cnt);
