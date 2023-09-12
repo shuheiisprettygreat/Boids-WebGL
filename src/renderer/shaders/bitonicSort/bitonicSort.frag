@@ -11,7 +11,7 @@ uniform int offset;
 layout(location=0) out vec4 FragColor;
 
 vec4 sampleTex(int i){
-    ivec2 texCoords = ivec2(i%texDimensions.x, i/int(texDimensions.x));
+    ivec2 texCoords = ivec2(i%texDimensions.x, i/texDimensions.x);
     return  texelFetch(texRead, texCoords, 0);
 }
 

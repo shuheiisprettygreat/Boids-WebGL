@@ -2,7 +2,7 @@
 precision mediump float;
 
 uniform sampler2D positionTexRead;
-uniform vec2 texDimensions;
+uniform ivec2 texDimensions;
 uniform float gridSize;
 uniform float hashSize;
 
@@ -30,11 +30,11 @@ float pos2hash(vec3 pos){
 
 void main(){
 
-    vec2 texCoord =  gl_FragCoord.xy / texDimensions;
-    vec3 position = texture(positionTexRead, texCoord).xyz;
+    ivec2 ifrag = ivec2(gl_FragCoord.xy);
+    vec3 position = texelFetch(positionTexRead, ifrag, 0).xyz;
 
     float hash = pos2hash(position);
 
-    float index = texDimensions.x*gl_FragCoord.y + gl_FragCoord.x;
+    int index = texDimensions.x*ifrag.y + ifrag.x;
     FragColor = vec4(index, hash, 0, 1.0);
 }

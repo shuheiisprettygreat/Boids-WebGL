@@ -129,13 +129,22 @@ class WebGLRenderer extends Renderer {
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
         this.dataTextureHeight = Math.ceil(this.nrParticles / this.dataTextureWidth);
-
         const positionTexture1 = createTexture(gl, positions,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const positionTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture1 = createTexture(gl, velocities, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const fb1 = this.createFramebuffer_2tex(gl, positionTexture1, velocityTexture1);
+        const fb2 = this.createFramebuffer_2tex(gl, positionTexture2, velocityTexture2);
+        this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1};
+        this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2};
 
         // setup datas for spatial hashing and bitonic sort
+        
+        // setup hashing info
+        // hashDimension^2 is size of hashTable.
+        // resonable limit is < 4096 because of device specific limiatation, but this is ample.
+        this.hashDimension = 2042;
+
         const sortTexture1 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const sortTexture2 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const fbSort1 = createFramebuffer(gl, sortTexture1);
@@ -144,11 +153,9 @@ class WebGLRenderer extends Renderer {
         this.sortInfoRead = {fb:fbSort1, tex:sortTexture1};
         this.sortInfoWrite = {fb:fbSort2, tex:sortTexture2};
 
-        // setup update framebuffer. Boids need to track positions and velocty
-        const fb1 = this.createFramebuffer_2tex(gl, positionTexture1, velocityTexture1);
-        const fb2 = this.createFramebuffer_2tex(gl, positionTexture2, velocityTexture2);
-        this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1};
-        this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2};
+        // setup dats for hash-to-indices table
+        const indecisTexture1 = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.hashDimension, this.hashDimension);
+        const fbIndecis1 = createFramebuffer(gl, indecisTexture1);
 
         // setup transform feedback
         const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_DRAW);
@@ -173,12 +180,7 @@ class WebGLRenderer extends Renderer {
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         this.drawInfo = {va:drawVa, size:this.parser.sizeList[1]};
 
-        // setup hashing info
-        // hashDimension^2 is size of hashTable.
-        // resonable limit is < 4096, which is ample
-        this.hashDimension = 2042;
-
-    }
+}
 
     // helper functions-----------------------------
     randomInsideSphere4(r){
@@ -235,7 +237,7 @@ class WebGLRenderer extends Renderer {
             this.hashingShader.use();
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
-            this.hashingShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
+            this.hashingShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.setFloat("gridSize", this.maxPerceptionRadius);
             this.hashingShader.setFloat("hashSize", this.hashDimension * this.hashDimension);
             this.renderQuad();
@@ -266,6 +268,8 @@ class WebGLRenderer extends Renderer {
             }
         }
 
+        // 
+
         //update values using update shader
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
@@ -275,9 +279,9 @@ class WebGLRenderer extends Renderer {
             gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
             gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
-            this.updateShader.setVec2("texDimentions", this.dataTextureWidth, this.dataTextureHeight);
+            this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
-            this.updateShader.setFloat("nrParticle", this.nrParticles);
+            this.updateShader.setInt("nrParticle", this.nrParticles);
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -287,7 +291,7 @@ class WebGLRenderer extends Renderer {
 
         // write pre-update position datas to buffer using transform feedback
         this.copyShader.use();
-        this.copyShader.setVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
+        this.copyShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
         gl.activeTexture(gl.TEXTURE1);
@@ -372,7 +376,7 @@ class WebGLRenderer extends Renderer {
         gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
         this.renderQuad();
 
-        gl.viewport(debug_w*1.2, 0 ,debug_w*4, debug_w*4);
+        gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
         this.renderQuad();

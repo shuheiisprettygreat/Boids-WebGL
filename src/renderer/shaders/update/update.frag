@@ -3,9 +3,9 @@ precision mediump float;
 
 uniform sampler2D positionTexRead;
 uniform sampler2D velocityTexRead;
-uniform vec2 texDimentions;
+uniform ivec2 texDimensions;
 uniform float deltaTime;
-uniform float nrParticle;
+uniform int nrParticle;
 
 uniform float sep_radius;
 uniform float coh_radius;
@@ -65,8 +65,8 @@ vec3 culcForce(vec3 position, vec3 velocity){
 
     vec3 force = vec3(0.0);
 
-    for(float i=0.0; i<float(nrParticle); i++){
-        ivec2 texCoord = ivec2(mod(i, texDimentions.x), floor(i / texDimentions.x));
+    for(int i=0; i<nrParticle; i++){
+        ivec2 texCoord = ivec2(i%texDimensions.x, i/texDimensions.x);
         vec3 posOther = texelFetch(positionTexRead, texCoord, 0).xyz;
         vec3 velOther = texelFetch(velocityTexRead, texCoord, 0).xyz;
         vec3 r = position - posOther;
@@ -119,11 +119,6 @@ vec3 constrainArea(vec3 pos, vec3 vel){
 }
 
 void main(){
-
-    vec2 texCoord =  gl_FragCoord.xy / texDimentions;
-
-    // vec3 position = texture(positionTexRead, texCoord).xyz;
-    // vec3 velocity = texture(velocityTexRead, texCoord).xyz;
     vec3 position = texelFetch(positionTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
     vec3 velocity = texelFetch(velocityTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
 
