@@ -60,6 +60,8 @@ class WebGLRenderer extends Renderer {
         this.updateShader.use();
         this.updateShader.setInt("positionTexRead", 0);
         this.updateShader.setInt("velocityTexRead", 1);
+        this.updateShader.setInt("sortedHashedIdTex", 2);
+        this.updateShader.setInt("hash2indicesTex", 3);
         this.setupBoidsParams(this.updateShader);
 
         // shader to hash position
@@ -249,7 +251,7 @@ class WebGLRenderer extends Renderer {
             gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
             this.hashingShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.setFloat("gridSize", this.maxPerceptionRadius);
-            this.hashingShader.setFloat("hashSize", this.hashDimension * this.hashDimension);
+            this.hashingShader.setInt("hashSize", this.hashDimension * this.hashDimension);
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -305,9 +307,16 @@ class WebGLRenderer extends Renderer {
             gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
             gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
+            gl.activeTexture(gl.TEXTURE2);
+            gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+            gl.activeTexture(gl.TEXTURE3);
+            gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.tex);
             this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
             this.updateShader.setInt("nrParticle", this.nrParticles);
+            this.updateShader.setInt("hashDimension", this.hashDimension);
+            this.updateShader.setFloat("gridSize", this.maxPerceptionRadius);
+            this.updateShader.setInt("hashSize", this.hashDimension * this.hashDimension);
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
