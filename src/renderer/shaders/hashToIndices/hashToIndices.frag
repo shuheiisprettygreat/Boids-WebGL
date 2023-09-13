@@ -2,10 +2,9 @@
 precision mediump float;
 
 in vec2 iIndices;
-in float iHash;
 
 out vec4 FragColor;
 
 void main(){
-    FragColor = vec4(iIndices, iHash, 0.5);
+    FragColor = vec4(iIndices, 0.0, 0.0);
 }

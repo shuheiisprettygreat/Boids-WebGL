@@ -158,4 +158,4 @@ function initQuadVAO(gl){
     return vao;
 }
 
-export {initVAO, initTexture, initCubeVAO}
+export {initVAO, initTexture, initCubeVAO, initQuadVAO}
