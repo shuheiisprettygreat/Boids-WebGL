@@ -23,8 +23,8 @@ bool compare(vec2 p, vec2 q){
 void main(){
     ivec2 ifrag = ivec2(gl_FragCoord.xy);
     int i = texDimensions.x*ifrag.y + ifrag.x;
-    bool b1 = (i >> stage & 1) == 0; // 降順に並べる
-    bool b2 = (i%(offset<<1)) >> offsetExp == 0; //compera(i, j)のどちら側か．trueでi
+    bool b1 = (i >> stage & 1) == 0; // true: decreasing order, false: increasing order
+    bool b2 = (i%(offset<<1)) >> offsetExp == 0; // true: i is who compare, false: j is who os compared. 
 
     vec4 hashedParticle_i = texelFetch(texRead, ifrag, 0);
     vec4 hashedParticle_j = sampleTex(b2 ? i+offset : i-offset);
