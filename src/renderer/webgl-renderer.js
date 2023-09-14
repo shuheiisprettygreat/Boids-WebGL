@@ -179,9 +179,12 @@ class WebGLRenderer extends Renderer {
         this.sortInfoWrite = {fb:fbSort2, tex:sortTexture2};
 
         // setup dats for hash-to-indices table
-        const hash2indicesTexture = createTexture(gl, null,  2, gl.RG32F, gl.RG, gl.FLOAT, this.hashDimension, this.hashDimension);
-        const fbIndices = createFramebuffer(gl, hash2indicesTexture);
-        this.hash2indicesInfo = {fb: fbIndices, tex:hash2indicesTexture};
+        const hash2indicesTexture_begin = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.hashDimension, this.hashDimension);
+        const hash2indicesTexture_end   = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.hashDimension, this.hashDimension);
+        const fbIndices = this.createFramebuffer_2tex(gl, hash2indicesTexture_begin, hash2indicesTexture_end);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
+        this.hash2indicesInfo = {fb: fbIndices, texBegin:hash2indicesTexture_begin, texEnd:hash2indicesTexture_end};
 
         // setup transform feedback
         const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
@@ -223,7 +226,6 @@ class WebGLRenderer extends Renderer {
 
     createFramebuffer_2tex(gl, tex1, tex2){
         const result = gl.createFramebuffer();
-        gl.bindTexture(gl.TEXTURE_2D, tex1);
         gl.bindFramebuffer(gl.FRAMEBUFFER, result);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex1, 0);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, tex2, 0);
@@ -306,13 +308,8 @@ class WebGLRenderer extends Renderer {
             gl.viewport(0, 0, this.hashDimension, this.hashDimension);
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.enable(gl.BLEND);
-            gl.blendFunc(gl.ONE, gl.ONE);
-            gl.bindVertexArray(this.vao.quad);
-            gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, this.nrParticles);
             gl.bindVertexArray(null);
-            gl.disable(gl.BLEND);
-
+            gl.drawArrays(gl.POINTS, 0, this.nrParticles);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 
@@ -437,7 +434,7 @@ class WebGLRenderer extends Renderer {
 
         gl.viewport(debug_w*2.4, 0 ,debug_w*3, debug_w*3);
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.tex);
+        gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.hash2indicesTexture_begin);
         this.renderQuad();
 
     }
