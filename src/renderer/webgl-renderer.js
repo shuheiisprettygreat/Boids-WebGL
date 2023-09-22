@@ -26,7 +26,8 @@ import bitonicSortVsSource from './shaders/bitonicSort/bitonicSort.vert?raw';
 import bitonicSortFsSource from './shaders/bitonicSort/bitonicSort.frag?raw';
 
 import hashToIndicesVsSource from './shaders/hashToIndices/hashToIndices.vert?raw';
-import hashToIndicesFsSource from './shaders/hashToIndices/hashToIndices.frag?raw';
+import hashToIndicesFsSourceBegin from './shaders/hashToIndices/hashToIndices_begin.frag?raw';
+import hashToIndicesFsSourceEnd from './shaders/hashToIndices/hashToIndices_end.frag?raw';
 
 import copyToBufferVsSource from './shaders/copyToBuffer/copyToBuffer.vert?raw';
 import copyToBufferFsSource from './shaders/copyToBuffer/copyToBuffer.frag?raw';
@@ -75,9 +76,12 @@ class WebGLRenderer extends Renderer {
         this.bitonicSortShader.setInt("texRead", 0);
         
         // shader to save index range sharing same hash.
-        this.hash2indicesShader = new Shader(this.gl, hashToIndicesVsSource, hashToIndicesFsSource);
-        this.hash2indicesShader.use();
-        this.hash2indicesShader.setInt("sortedTex", 0);
+        this.hash2indicesBeginShader = new Shader(this.gl, hashToIndicesVsSource, hashToIndicesFsSourceBegin);
+        this.hash2indicesBeginShader.use();
+        this.hash2indicesBeginShader.setInt("sortedTex", 0);
+        this.hash2indicesEndShader = new Shader(this.gl, hashToIndicesVsSource, hashToIndicesFsSourceEnd);
+        this.hash2indicesEndShader.use();
+        this.hash2indicesEndShader.setInt("sortedTex", 0);
 
         // copy data from data-texture to buffers. 
         this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity']);
@@ -181,10 +185,9 @@ class WebGLRenderer extends Renderer {
         // setup dats for hash-to-indices table
         const hash2indicesTexture_begin = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.hashDimension, this.hashDimension);
         const hash2indicesTexture_end   = createTexture(gl, null,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.hashDimension, this.hashDimension);
-        const fbIndices = this.createFramebuffer_2tex(gl, hash2indicesTexture_begin, hash2indicesTexture_end);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
-        this.hash2indicesInfo = {fb: fbIndices, texBegin:hash2indicesTexture_begin, texEnd:hash2indicesTexture_end};
+        const fbIndicesBegin = createFramebuffer(gl, hash2indicesTexture_begin);
+        const fbIndicesEnd = createFramebuffer(gl, hash2indicesTexture_end);
+        this.hash2indicesInfo = {fbBegin: fbIndicesBegin, fbEnd:fbIndicesEnd, texBegin:hash2indicesTexture_begin, texEnd:hash2indicesTexture_end};
 
         // setup transform feedback
         const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
@@ -298,19 +301,19 @@ class WebGLRenderer extends Renderer {
         }
 
         // write range of indices which their particles sharing same hash, using hash-sorted indices. ==============
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.hash2indicesInfo.fb);
-            this.hash2indicesShader.use();
-            this.hash2indicesShader.setInt("texDimensionsX", this.dataTextureWidth);
-            this.hash2indicesShader.setInt("nrParticles", this.nrParticles);
-            this.hash2indicesShader.setInt("hashDimension", this.hashDimension);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
-            gl.viewport(0, 0, this.hashDimension, this.hashDimension);
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            gl.bindVertexArray(null);
-            gl.drawArrays(gl.POINTS, 0, this.nrParticles);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, this.hash2indicesInfo.fb);
+        //     this.hash2indicesShader.use();
+        //     this.hash2indicesShader.setInt("texDimensionsX", this.dataTextureWidth);
+        //     this.hash2indicesShader.setInt("nrParticles", this.nrParticles);
+        //     this.hash2indicesShader.setInt("hashDimension", this.hashDimension);
+        //     gl.activeTexture(gl.TEXTURE0);
+        //     gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+        //     gl.viewport(0, 0, this.hashDimension, this.hashDimension);
+        //     gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        //     gl.clear(gl.COLOR_BUFFER_BIT);
+        //     gl.bindVertexArray(null);
+        //     gl.drawArrays(gl.POINTS, 0, this.nrParticles);
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
 
         //update values using update shader ==================================
@@ -326,7 +329,7 @@ class WebGLRenderer extends Renderer {
             gl.activeTexture(gl.TEXTURE2);
             gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
             gl.activeTexture(gl.TEXTURE3);
-            gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.tex);
+            gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.texBegin);
             this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
             this.updateShader.setInt("nrParticle", this.nrParticles);
