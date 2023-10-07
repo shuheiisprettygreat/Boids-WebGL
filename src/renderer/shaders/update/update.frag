@@ -8,7 +8,8 @@ uniform float deltaTime;
 uniform int nrParticle;
 
 uniform sampler2D sortedHashedIdTex;
-uniform sampler2D hash2indicesTex;
+uniform sampler2D hash2indicesBeginTex;
+uniform sampler2D hash2indicesEndTex;
 uniform int hashDimension;
 
 uniform float sep_radius;
@@ -89,9 +90,20 @@ vec3 culcForce(vec3 position, vec3 velocity){
     for(int dx=-1; dx<2; dx++){ for(int dy=-1; dy<2; dy++){ for(int dz=-1; dz<2; dz++){
         ivec3 neighborGrid = grid2positiveGrid(grid + ivec3(dx, dy, dz));
         int neighborHash = grid2hash(neighborGrid);
-        ivec2 indexRange = ivec2(
-            sampleAs1D(hash2indicesTex, ivec2(hashDimension, hashDimension), neighborHash).xy
+
+        ivec2 indexRangeBegin = ivec2(
+            sampleAs1D(hash2indicesBeginTex, ivec2(hashDimension, hashDimension), neighborHash).xy
         );
+        ivec2 indexRangeEnd = ivec2(
+            sampleAs1D(hash2indicesEndTex, ivec2(hashDimension, hashDimension), neighborHash).xy
+        );
+
+        ivec2 indexRange;
+        if(indexRangeBegin.y != 0){
+            indexRange = indexRangeBegin;
+        } else {
+            indexRange = ivec2(indexRangeBegin.x, indexRangeEnd.y);
+        }
 
         for(int i=indexRange.x; i<indexRange.y; i++){
             int other_id = int(sampleAs1D(sortedHashedIdTex, texDimensions, i).x);

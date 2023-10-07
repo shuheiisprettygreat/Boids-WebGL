@@ -56,20 +56,11 @@ class WebGLRenderer extends Renderer {
         this.skyShader = new Shader(this.gl, skyVsSource, skyFsSource);
         this.quadShader = new Shader(this.gl, quadVsSource, quadFsSource);
 
-        // shader to update datas using texture
-        this.updateShader = new Shader(this.gl, updateVsSource, updateFsSource);
-        this.updateShader.use();
-        this.updateShader.setInt("positionTexRead", 0);
-        this.updateShader.setInt("velocityTexRead", 1);
-        this.updateShader.setInt("sortedHashedIdTex", 2);
-        this.updateShader.setInt("hash2indicesTex", 3);
-        this.setupBoidsParams(this.updateShader);
-
         // shader to hash position
         this.hashingShader = new Shader(this.gl, hashingVsSource, hashingFsSource);
         this.hashingShader.use();
         this.hashingShader.setInt("positionTexRead", 0);
-
+        
         // shader to sort hashed values
         this.bitonicSortShader = new Shader(this.gl, bitonicSortVsSource, bitonicSortFsSource);
         this.bitonicSortShader.use();
@@ -82,13 +73,23 @@ class WebGLRenderer extends Renderer {
         this.hash2indicesEndShader = new Shader(this.gl, hashToIndicesVsSource, hashToIndicesFsSourceEnd);
         this.hash2indicesEndShader.use();
         this.hash2indicesEndShader.setInt("sortedTex", 0);
+        
+        // shader to update datas using texture
+        this.updateShader = new Shader(this.gl, updateVsSource, updateFsSource);
+        this.updateShader.use();
+        this.updateShader.setInt("positionTexRead", 0);
+        this.updateShader.setInt("velocityTexRead", 1);
+        this.updateShader.setInt("sortedHashedIdTex", 2);
+        this.updateShader.setInt("hash2indicesBeginTex", 3);
+        this.updateShader.setInt("hash2indicesEndTex", 4);
+        this.setupBoidsParams(this.updateShader);
 
         // copy data from data-texture to buffers. 
         this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity']);
         this.copyShader.use();
         this.copyShader.setInt("positionTexRead", 0);
         this.copyShader.setInt("velocityTexRead", 1);
-
+        
         // shader for drawing. 
         this.drawShader = new Shader(this.gl, drawVsSource, drawFsSource);
 
@@ -149,7 +150,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // Initialize particles info / should be power of 2 (required for bitonic sort)
-        this.nrParticles = 4096 ;
+        this.nrParticles = 4096*4;
         let initialPosisionRadius = 1.0;
         let initialVelocityRadius = 2.0
         const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(initialPosisionRadius)).flat());
@@ -200,7 +201,7 @@ class WebGLRenderer extends Renderer {
         // setup datas to draw.
         const drawVa = this.parser.vaList[1];
         gl.bindVertexArray(drawVa);
-                    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+            gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.enableVertexAttribArray(3);
             gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 0, 0);
             gl.vertexAttribDivisor(3, 1);
@@ -315,6 +316,35 @@ class WebGLRenderer extends Renderer {
         //     gl.drawArrays(gl.POINTS, 0, this.nrParticles);
         // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
+        // ios doesnt work with way above because of blending. 
+        // below is version without blending.
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.hash2indicesInfo.fbBegin);
+            this.hash2indicesBeginShader.use();
+            this.hash2indicesBeginShader.setInt("texDimensionsX", this.dataTextureWidth);
+            this.hash2indicesBeginShader.setInt("nrParticles", this.nrParticles);
+            this.hash2indicesBeginShader.setInt("hashDimension", this.hashDimension);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+            gl.viewport(0, 0, this.hashDimension, this.hashDimension);
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.bindVertexArray(null);
+            gl.drawArrays(gl.POINTS, 0, this.nrParticles);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.hash2indicesInfo.fbEnd);
+            this.hash2indicesEndShader.use();
+            this.hash2indicesEndShader.setInt("texDimensionsX", this.dataTextureWidth);
+            this.hash2indicesEndShader.setInt("nrParticles", this.nrParticles);
+            this.hash2indicesEndShader.setInt("hashDimension", this.hashDimension);
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+            gl.viewport(0, 0, this.hashDimension, this.hashDimension);
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.bindVertexArray(null);
+            gl.drawArrays(gl.POINTS, 0, this.nrParticles);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+
 
         //update values using update shader ==================================
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
@@ -330,6 +360,8 @@ class WebGLRenderer extends Renderer {
             gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
             gl.activeTexture(gl.TEXTURE3);
             gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.texBegin);
+            gl.activeTexture(gl.TEXTURE4);
+            gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.texEnd);
             this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
             this.updateShader.setInt("nrParticle", this.nrParticles);
@@ -435,9 +467,9 @@ class WebGLRenderer extends Renderer {
         gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
         this.renderQuad();
 
-        gl.viewport(debug_w*2.4, 0 ,debug_w*3, debug_w*3);
+        gl.viewport(debug_w*2.4, 0 ,debug_w, debug_w);
         gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.hash2indicesTexture_begin);
+        gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.texBegin);
         this.renderQuad();
 
     }

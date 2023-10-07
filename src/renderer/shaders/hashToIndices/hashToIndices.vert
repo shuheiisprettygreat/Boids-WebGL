@@ -30,16 +30,18 @@ void main() {
 
     vec2 pos = vec2(2*x-hashDimension, 2*y-hashDimension) + 0.5;
     gl_Position = vec4(pos/float(hashDimension), 0.0, 1.0);
+    gl_PointSize = 1.0;
 
     iIndices = vec2(0, 0);
+    iTarget = -1.0;
+    
     if(hashChangeNext){
         iIndices.y = float(gl_VertexID+1);
         iTarget = 1.0;
-    } else if (hashChangedHere){
+    }
+    if (hashChangedHere){
         iIndices.x = float(gl_VertexID);
         iTarget = 0.0;
-    }else{
-        iTarget = -1.0;
     }
 
 }
