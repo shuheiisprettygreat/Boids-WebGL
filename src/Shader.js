@@ -63,6 +63,12 @@ class Shader{
         let gl = this.gl;
         gl.uniformMatrix4fv(gl.getUniformLocation(this.id, name), false, mat);
     }
+
+    setTexture(i, texture){
+        let gl = this.gl;
+        gl.activeTexture(gl.TEXTURE0 + i);
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+    }
     
 }
 

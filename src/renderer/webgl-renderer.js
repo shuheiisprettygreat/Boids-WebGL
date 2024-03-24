@@ -5,7 +5,7 @@ import {initVAO, initTexture, initCubeVAO, initQuadVAO} from "../init-buffers.js
 
 import { Json2Va } from "../json2vertexArray.js";
 
-import {mat3, mat4, vec3} from "gl-matrix";
+import {mat3, mat4, vec3, vec2} from "gl-matrix";
 
 import vsSource from './shaders/mat1/v.vert?raw';
 import fsSource from './shaders/mat1/f.frag?raw';
@@ -15,6 +15,9 @@ import skyFsSource from './shaders/skybox_grad/skybox_grad.frag?raw';
 
 import quadVsSource from './shaders/NDCQuad/NDCQuad.vert?raw';
 import quadFsSource from './shaders/NDCQuad/NDCQuad.frag?raw';
+
+import initializeVsSource from './shaders/initialize/initialize.vert?raw';
+import initializeFsSource from './shaders/initialize/initialize.frag?raw';
 
 import updateVsSource from './shaders/update/update.vert?raw';
 import updateFsSource from './shaders/update/update.frag?raw';
@@ -37,7 +40,6 @@ import drawFsSource from './shaders/draw/draw.frag?raw';
 
 import { createBuffer, createFramebuffer, createTexture, createVertexArray } from "../createGLData.js";
 
-
 class WebGLRenderer extends Renderer {
 
     //---------------------------------------
@@ -51,11 +53,14 @@ class WebGLRenderer extends Renderer {
         this.width = this.canvas.width;
         this.height = this.canvas.height;
 
-        // setup shaders
+        // setup shaders ---------
         this.shader = new Shader(this.gl, vsSource, fsSource);
         this.skyShader = new Shader(this.gl, skyVsSource, skyFsSource);
         this.quadShader = new Shader(this.gl, quadVsSource, quadFsSource);
 
+        // initializeShaders ----------
+        this.initializeShader = new Shader(this.gl, initializeVsSource, initializeFsSource);
+        
         // shader to hash position
         this.hashingShader = new Shader(this.gl, hashingVsSource, hashingFsSource);
         this.hashingShader.use();
@@ -79,16 +84,18 @@ class WebGLRenderer extends Renderer {
         this.updateShader.use();
         this.updateShader.setInt("positionTexRead", 0);
         this.updateShader.setInt("velocityTexRead", 1);
-        this.updateShader.setInt("sortedHashedIdTex", 2);
-        this.updateShader.setInt("hash2indicesBeginTex", 3);
-        this.updateShader.setInt("hash2indicesEndTex", 4);
+        this.updateShader.setInt("bitangentTexRead", 2);
+        this.updateShader.setInt("sortedHashedIdTex", 3);
+        this.updateShader.setInt("hash2indicesBeginTex", 4);
+        this.updateShader.setInt("hash2indicesEndTex", 5);
         this.setupBoidsParams(this.updateShader);
 
         // copy data from data-texture to buffers. 
-        this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity']);
+        this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity', 'bitangent']);
         this.copyShader.use();
         this.copyShader.setInt("positionTexRead", 0);
         this.copyShader.setInt("velocityTexRead", 1);
+        this.copyShader.setInt("bitangentTexRead", 2);
         
         // shader for drawing. 
         this.drawShader = new Shader(this.gl, drawVsSource, drawFsSource);
@@ -118,6 +125,9 @@ class WebGLRenderer extends Renderer {
         console.log("maxVertexShaderTextureUnits:", maxVertexShaderTextureUnits );
         console.log("maxFragmentShaderTextureUnits:", maxFragmentShaderTextureUnits);
 
+        console.log("enum: ", this.gl.COLOR_ATTACHMENT0);
+        console.log("enum+1: ", this.gl.COLOR_ATTACHMENT0+1);
+
         if(!ext){
             console.log("color buffer float extension not found");
         }
@@ -125,23 +135,9 @@ class WebGLRenderer extends Renderer {
 
     setupBoidsParams(shader){
         shader.use();
-        let sep_radius = 0.05;
-        let coh_radius = 0.15;
-        let ali_radius = 0.25;
-        // keep maximum range for grid sorting.
-        this.maxPerceptionRadius = Math.max(sep_radius, coh_radius, ali_radius);
 
-        shader.setFloat("sep_radius", sep_radius);
-        shader.setFloat("coh_radius", coh_radius);
-        shader.setFloat("ali_radius", ali_radius);
-        shader.setFloat("sep_k", 1.0);
-        shader.setFloat("coh_k", 2.0);
-        shader.setFloat("ali_k", 1.5);
-        shader.setFloat("maxForce", 10.0);
-        shader.setFloat("maxSpeed", 2.0);
-        shader.setFloat("minSpeed", 0.4);
-        shader.setFloat("restrictRadius", 4.0);
-        shader.setFloat("restrictStrength", 0.5);
+        shader.setFloat("v0", 10.0);
+        shader.setFloat("M", 0.08);
     }
 
     //---------------------------------------
@@ -149,24 +145,29 @@ class WebGLRenderer extends Renderer {
     init(){
         let gl = this.gl;
 
-        // Initialize particles info / should be power of 2 (required for bitonic sort)
-        this.nrParticles = 4096*4;
-        let initialPosisionRadius = 1.0;
-        let initialVelocityRadius = 2.0
-        const positions = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(initialPosisionRadius)).flat());
-        const velocities = new Float32Array(new Array(this.nrParticles).fill(0).map(_=>this.randomInsideSphere4(initialVelocityRadius)).flat());
+        this.nrParticles = 1024;
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
         this.dataTextureHeight = Math.ceil(this.nrParticles / this.dataTextureWidth);
-        const positionTexture1 = createTexture(gl, positions,  4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const positionTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const velocityTexture1 = createTexture(gl, velocities, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const velocityTexture2 = createTexture(gl, null,       4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const fb1 = this.createFramebuffer_2tex(gl, positionTexture1, velocityTexture1);
-        const fb2 = this.createFramebuffer_2tex(gl, positionTexture2, velocityTexture2);
-        this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1};
-        this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2};
+        const positionTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const positionTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const velocityTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const velocityTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const bitangentTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const bitangentTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const fb1 = this.createFramebuffer_mrt(gl, [positionTexture1, velocityTexture1, bitangentTexture1]);
+        const fb2 = this.createFramebuffer_mrt(gl, [positionTexture2, velocityTexture2, bitangentTexture2]);
+        this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1, bitangent: bitangentTexture1};
+        this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2, bitangent: bitangentTexture2};
+
+        // initialize positions / velocities.
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
+            gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
+            this.initializeShader.use();
+            this.renderQuad();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        [this.updateInfoRead, this.updateInfoWrite] = [this.updateInfoWrite, this.updateInfoRead];
 
         // setup datas for spatial hashing and bitonic sort
         
@@ -190,10 +191,11 @@ class WebGLRenderer extends Renderer {
         const fbIndicesEnd = createFramebuffer(gl, hash2indicesTexture_end);
         this.hash2indicesInfo = {fbBegin: fbIndicesBegin, fbEnd:fbIndicesEnd, texBegin:hash2indicesTexture_begin, texEnd:hash2indicesTexture_end};
 
-        // setup transform feedback
+        // setup transform feedbacks
         const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
         const velocityBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
-        const tf = this.createTransformFeedback(gl, positionBuffer, velocityBuffer);
+        const bitangentBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
+        const tf = this.createTransformFeedback(gl, [positionBuffer, velocityBuffer, bitangentBuffer]);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
         this.copyInfo = {tf:tf};
@@ -209,6 +211,10 @@ class WebGLRenderer extends Renderer {
             gl.enableVertexAttribArray(4);
             gl.vertexAttribPointer(4, 3, gl.FLOAT, false, 0, 0);
             gl.vertexAttribDivisor(4, 1);
+            gl.bindBuffer(gl.ARRAY_BUFFER, bitangentBuffer);
+            gl.enableVertexAttribArray(5);
+            gl.vertexAttribPointer(5, 3, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribDivisor(5, 1);
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         this.drawInfo = {va:drawVa, size:this.parser.sizeList[1]};
@@ -216,41 +222,29 @@ class WebGLRenderer extends Renderer {
     }
 
     // helper functions-----------------------------
-    randomInsideSphere4(r){
-        let result = vec3.create();
-        vec3.random(result, Math.cbrt(Math.random())*r);
-        return [result[0], result[1], result[2], 1];
-    }
-
-    randomInsideSphere3(r){
-        let result = vec3.create();
-        vec3.random(result, Math.cbrt(Math.random())*r);
-        return [result[0], result[1], result[2]];
-    }
-
-    createFramebuffer_2tex(gl, tex1, tex2){
+    createFramebuffer_mrt(gl, textures){
         const result = gl.createFramebuffer();
         gl.bindFramebuffer(gl.FRAMEBUFFER, result);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex1, 0);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, tex2, 0);
-        const mrtTarget = [
-            gl.COLOR_ATTACHMENT0,
-            gl.COLOR_ATTACHMENT1,
-        ];
+        const mrtTarget = new Array(textures.length);
+        for (let i = 0; i < textures.length; i++) {
+            gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0+i, gl.TEXTURE_2D, textures[i], 0);
+            mrtTarget[i] = gl.COLOR_ATTACHMENT0+i;
+        }
         gl.drawBuffers(mrtTarget);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         return result;
     }
 
-    createTransformFeedback(gl, buffer1, buffer2){
+    createTransformFeedback(gl, buffers){
         const tf = gl.createTransformFeedback();
         gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK, tf);
-        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, buffer1);
-        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, buffer2);
+        for(let i=0; i<buffers.length; i++){
+            gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, i, buffers[i]);    
+        }
         return tf;
     }
-    
+   
 
     //---------------------------------------
     OnResize(width, height){
@@ -267,8 +261,7 @@ class WebGLRenderer extends Renderer {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.sortInfoWrite.fb);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.use();
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+            this.hashingShader.setTexture(0, this.updateInfoRead.possition);
             this.hashingShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.setFloat("gridSize", this.maxPerceptionRadius);
             this.hashingShader.setInt("hashSize", this.hashDimension * this.hashDimension);
@@ -285,13 +278,12 @@ class WebGLRenderer extends Renderer {
         this.bitonicSortShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
         this.bitonicSortShader.setVec2("invTexDimensions", 1.0/this.dataTextureWidth, 1.0/this.dataTextureHeight);
         gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
-        gl.activeTexture(gl.TEXTURE0);
         for(let stage=1; stage<=this.exponentNrParticle; stage++){
             this.bitonicSortShader.setInt("stage", stage);
             for(let offsetExp = stage-1; offsetExp >= 0; offsetExp--){
                 this.bitonicSortShader.setInt("offsetExp", offsetExp);
                 this.bitonicSortShader.setInt("offset", 1<<offsetExp);
-                gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+                this.bitonicSortShader.setTexture(0, this.sortInfoRead.tex);
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.sortInfoWrite.fb);
                 this.renderQuad();
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -301,21 +293,6 @@ class WebGLRenderer extends Renderer {
             }
         }
 
-        // write range of indices which their particles sharing same hash, using hash-sorted indices. ==============
-        // gl.bindFramebuffer(gl.FRAMEBUFFER, this.hash2indicesInfo.fb);
-        //     this.hash2indicesShader.use();
-        //     this.hash2indicesShader.setInt("texDimensionsX", this.dataTextureWidth);
-        //     this.hash2indicesShader.setInt("nrParticles", this.nrParticles);
-        //     this.hash2indicesShader.setInt("hashDimension", this.hashDimension);
-        //     gl.activeTexture(gl.TEXTURE0);
-        //     gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
-        //     gl.viewport(0, 0, this.hashDimension, this.hashDimension);
-        //     gl.clearColor(0.0, 0.0, 0.0, 1.0);
-        //     gl.clear(gl.COLOR_BUFFER_BIT);
-        //     gl.bindVertexArray(null);
-        //     gl.drawArrays(gl.POINTS, 0, this.nrParticles);
-        // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
         // ios doesnt work with way above because of blending. 
         // below is version without blending.
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.hash2indicesInfo.fbBegin);
@@ -323,8 +300,7 @@ class WebGLRenderer extends Renderer {
             this.hash2indicesBeginShader.setInt("texDimensionsX", this.dataTextureWidth);
             this.hash2indicesBeginShader.setInt("nrParticles", this.nrParticles);
             this.hash2indicesBeginShader.setInt("hashDimension", this.hashDimension);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+            this.hash2indicesBeginShader.setTexture(0, this.sortInfoRead.tex);
             gl.viewport(0, 0, this.hashDimension, this.hashDimension);
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
@@ -335,8 +311,7 @@ class WebGLRenderer extends Renderer {
             this.hash2indicesEndShader.setInt("texDimensionsX", this.dataTextureWidth);
             this.hash2indicesEndShader.setInt("nrParticles", this.nrParticles);
             this.hash2indicesEndShader.setInt("hashDimension", this.hashDimension);
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+            this.hash2indicesEndShader.setTexture(0, this.sortInfoRead.tex);
             gl.viewport(0, 0, this.hashDimension, this.hashDimension);
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
@@ -352,16 +327,12 @@ class WebGLRenderer extends Renderer {
             // gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.use();
-            gl.activeTexture(gl.TEXTURE0);
-            gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
-            gl.activeTexture(gl.TEXTURE1);
-            gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
-            gl.activeTexture(gl.TEXTURE2);
-            gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
-            gl.activeTexture(gl.TEXTURE3);
-            gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.texBegin);
-            gl.activeTexture(gl.TEXTURE4);
-            gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.texEnd);
+            this.updateShader.setTexture(0, this.updateInfoRead.position);
+            this.updateShader.setTexture(1, this.updateInfoRead.velocity);
+            this.updateShader.setTexture(2, this.updateInfoRead.bitangent);
+            this.updateShader.setTexture(3, this.sortInfoRead.tex);
+            this.updateShader.setTexture(4, this.hash2indicesInfo.texBegin);
+            this.updateShader.setTexture(5, this.hash2indicesInfo.texEnd);
             this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
             this.updateShader.setInt("nrParticle", this.nrParticles);
@@ -379,10 +350,9 @@ class WebGLRenderer extends Renderer {
         // write pre-update position datas to buffer using transform feedback ==================================
         this.copyShader.use();
         this.copyShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.velocity);
+        this.copyShader.setTexture(0, this.updateInfoRead.position);
+        this.copyShader.setTexture(1, this.updateInfoRead.velocity);
+        this.copyShader.setTexture(2, this.updateInfoRead.bitangent);
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.bindVertexArray(null);
@@ -400,7 +370,6 @@ class WebGLRenderer extends Renderer {
         
         // gl.getBufferSubData(gl.ARRAY_BUFFER, 0, results);
         // console.log(results.slice(0, 6));
-        
 
     }
 
@@ -458,18 +427,15 @@ class WebGLRenderer extends Renderer {
         gl.viewport(0, 0 ,debug_w, debug_w);
         gl.depthFunc(gl.ALWAYS);
         this.quadShader.use();
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.updateInfoRead.position);
+        this.quadShader.setTexture(0, this.updateInfoRead.position);
         this.renderQuad();
 
         gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.sortInfoRead.tex);
+        this.quadShader.setTexture(0, this.sortInfoRead.tex);
         this.renderQuad();
 
         gl.viewport(debug_w*2.4, 0 ,debug_w, debug_w);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.hash2indicesInfo.texBegin);
+        this.quadShader.setTexture(0, this.hash2indicesInfo.texBegin);
         this.renderQuad();
 
     }
@@ -483,6 +449,7 @@ class WebGLRenderer extends Renderer {
 
         this.drawShader.use();
         this.drawShader.setMat4("model", model);
+        this.drawShader.setVec3("camera", this.camera.pos[0], this.camera.pos[1], this.camera.pos[2]);
 
         gl.bindVertexArray(this.drawInfo.va);
         gl.drawArraysInstanced(gl.TRIANGLES, 0, this.drawInfo.size, this.nrParticles);
@@ -496,11 +463,10 @@ class WebGLRenderer extends Renderer {
         shader.use();
         
         model = mat4.create();
-        mat4.translate(model, model, vec3.fromValues(0, -1.0, 0));
+        mat4.translate(model, model, vec3.fromValues(0, 0, 0));
         mat4.scale(model, model, vec3.fromValues(5, 5, 5));
         shader.setMat4("model", model);
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, this.texture.checker_gray);
+        shader.setTexture(0, this.texture.checker_gray);
         this.renderPlane();
     }
 
