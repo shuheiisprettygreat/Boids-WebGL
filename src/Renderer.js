@@ -23,19 +23,25 @@ class Renderer {
         };
         
 
-        let lastTimeStamp = -1;
+        let lastTimeStamp = 0;
+        if(!this.timeDeltaMin) this.timeDeltaMin = 0.0;
+
         this.frameCallback = (timestamp) => {
             this.timestamp = timestamp;
-            this.timeDelta = lastTimeStamp == -1 ? 0 : timestamp - lastTimeStamp;
-            lastTimeStamp = timestamp;
+            this.timeDelta = timestamp - lastTimeStamp;
+
             
+            if(this.timeDelta > this.timeDeltaMin){
+                lastTimeStamp = timestamp - (this.timeDelta % this.timeDeltaMin);
+                
+                this.frameCount++;
+                if(Math.random() < 0.01) console.log(this.timeDelta);
+
+                this.beforeFrame(timestamp, this.timeDelta);
+                this.OnFrame(timestamp, this.timeDelta);
+            }
             this.refId = requestAnimationFrame(this.frameCallback);
-            this.frameCount++;
-
-            this.beforeFrame(timestamp, this.timeDelta);
-            this.OnFrame(timestamp, this.timeDelta);
         };
-
     
         this.resizeCallback = (event) => {
             const scalar = Math.min(devicePixelRatio, 1.5);
@@ -86,6 +92,7 @@ class Renderer {
         window.addEventListener('mousemove', this.mouseMoveCallback);
         window.addEventListener('wheel', this.mouseWheelCallback);
         this.resizeCallback();
+        this.timeDeltaMin = 1000/60.0;
         this.refId = requestAnimationFrame(this.frameCallback);
     }
 

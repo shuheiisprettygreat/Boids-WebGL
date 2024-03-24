@@ -268,10 +268,7 @@ class WebGLRenderer extends Renderer {
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        let swap = this.sortInfoRead;
-        this.sortInfoRead = this.sortInfoWrite;
-        this.sortInfoWrite = swap;
-
+        [this.sortInfoRead, this.sortInfoWrite] = [this.sortInfoWrite, this.sortInfoRead];
 
         // bitonic sort  ==================================
         this.bitonicSortShader.use();
@@ -287,9 +284,7 @@ class WebGLRenderer extends Renderer {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, this.sortInfoWrite.fb);
                 this.renderQuad();
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                swap = this.sortInfoRead;
-                this.sortInfoRead = this.sortInfoWrite;
-                this.sortInfoWrite = swap;
+                [this.sortInfoRead, this.sortInfoWrite] = [this.sortInfoWrite, this.sortInfoRead];
             }
         }
 
@@ -342,9 +337,7 @@ class WebGLRenderer extends Renderer {
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        swap = this.updateInfoRead;
-        this.updateInfoRead = this.updateInfoWrite;
-        this.updateInfoWrite = swap;
+        [this.updateInfoRead, this.updateInfoWrite] = [this.updateInfoWrite, this.updateInfoRead];
 
 
         // write pre-update position datas to buffer using transform feedback ==================================
