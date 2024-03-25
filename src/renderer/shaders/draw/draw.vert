@@ -44,7 +44,7 @@ void main() {
     vec4 pos = model_ * vec4(aPos, 1.0);
 
     // world position are given as instancePosition;
-    pos.xyz += instancePosition;
+    pos.xyz += instancePosition * 0.05;
 
     gl_Position = proj * view * pos;
     iPos = pos.xyz;

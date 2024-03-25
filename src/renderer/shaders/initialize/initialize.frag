@@ -40,9 +40,9 @@ vec3 randomInsideCylinder(float radius, float height){
     return result;
 }
 
-vec3 randomInsideSphere(float radius){
+vec3 randomInsideSphere(){
     vec3 rand = hash(uvec3(gl_FragCoord.xy, 20));
-    float r = pow(rand.x, 0.3333) * radius;
+    float r = pow(rand.x, 0.3333);
     float t = TAU * rand.y;
     float p = acos(2.0*rand.z - 1.0);
     float sp = sin(p);
@@ -51,12 +51,12 @@ vec3 randomInsideSphere(float radius){
 
 void main(){
 
-    vec3 position = randomInsideCylinder(2.0, 2.0);
-    vec3 heading = randomInsideSphere(1.0);
+    vec3 position = randomInsideCylinder(150.0, 50.0);
+    vec3 heading = randomInsideSphere();
 
     vec3 bitangent = cross(heading, vec3(0, 1, 0));
 
-    vec3 velocity = heading * 1.0;
+    vec3 velocity = heading * 10.0;
 
     positionColor = vec4(position, 1.0);
     VelocityColor = vec4(velocity, 1.0);

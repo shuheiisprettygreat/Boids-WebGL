@@ -137,7 +137,9 @@ class WebGLRenderer extends Renderer {
         shader.use();
 
         shader.setFloat("v0", 10.0);
+        shader.setFloat("tau", 3.0);
         shader.setFloat("M", 0.08);
+        shader.setFloat("weightRandomForce", 0.01);
     }
 
     //---------------------------------------

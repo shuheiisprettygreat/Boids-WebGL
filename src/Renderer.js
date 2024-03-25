@@ -31,14 +31,16 @@ class Renderer {
             this.timeDelta = timestamp - lastTimeStamp;
 
             
-            if(this.timeDelta > this.timeDeltaMin){
-                lastTimeStamp = timestamp - (this.timeDelta % this.timeDeltaMin);
-                
+            if(this.timeDelta > this.timeDeltaMin){                
                 this.frameCount++;
-                if(Math.random() < 0.01) console.log(this.timeDelta);
+                if(Math.random() < 0.02) console.log(this.timeDelta);
 
+                let elapsed = Date.now();
                 this.beforeFrame(timestamp, this.timeDelta);
                 this.OnFrame(timestamp, this.timeDelta);
+                elapsed = Date.now() - elapsed;
+
+                lastTimeStamp = timestamp - (this.timeDelta % this.timeDeltaMin) - elapsed;
             }
             this.refId = requestAnimationFrame(this.frameCallback);
         };
@@ -92,7 +94,7 @@ class Renderer {
         window.addEventListener('mousemove', this.mouseMoveCallback);
         window.addEventListener('wheel', this.mouseWheelCallback);
         this.resizeCallback();
-        this.timeDeltaMin = 1000/60.0;
+        this.timeDeltaMin = 10.0;
         this.refId = requestAnimationFrame(this.frameCallback);
     }
 
