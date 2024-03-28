@@ -12,6 +12,9 @@ uniform float v0;
 uniform float tau;
 uniform float M;
 uniform float weightRandomForce;
+uniform float Rmax;
+uniform float du;
+uniform float s;
 
 uniform sampler2D sortedHashedIdTex;
 uniform sampler2D hash2indicesBeginTex;
@@ -118,6 +121,9 @@ void main(){
     vec3 force = vec3(0);
     force += computeCruiseForce(velocity);
     force += computeRandomForce(position);
+
+    // topological interaction
+    // float r = updateRange(position, )
 
     velocity += force/M * deltaTime;
     position += velocity * deltaTime;

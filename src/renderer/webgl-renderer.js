@@ -120,10 +120,12 @@ class WebGLRenderer extends Renderer {
         const maxTextureUnits = this.gl.getParameter(this.gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS);
         const maxVertexShaderTextureUnits = this.gl.getParameter(this.gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS);
         const maxFragmentShaderTextureUnits = this.gl.getParameter(this.gl.MAX_TEXTURE_IMAGE_UNITS);
+        const maxTextureSize = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE);
 
         console.log("maxTextureUnits", maxTextureUnits);
         console.log("maxVertexShaderTextureUnits:", maxVertexShaderTextureUnits );
         console.log("maxFragmentShaderTextureUnits:", maxFragmentShaderTextureUnits);
+        console.log("maxTextureSize:", maxTextureSize);
 
         console.log("enum: ", this.gl.COLOR_ATTACHMENT0);
         console.log("enum+1: ", this.gl.COLOR_ATTACHMENT0+1);
@@ -136,10 +138,13 @@ class WebGLRenderer extends Renderer {
     setupBoidsParams(shader){
         shader.use();
 
-        shader.setFloat("v0", 10.0);
-        shader.setFloat("tau", 3.0);
-        shader.setFloat("M", 0.08);
-        shader.setFloat("weightRandomForce", 0.01);
+        shader.setFloat("v0", 10.0); // Cruise Speed
+        shader.setFloat("tau", 3.0); // relaxation time
+        shader.setFloat("M", 0.08); // Mass
+        shader.setFloat("weightRandomForce", 0.01); 
+        shader.setFloat("Rmax", 100.0); // max perception range
+        shader.setFloat("du", 50.0); // reaction time
+        shader.setFloat("s", 50.0 * 0.1) // interpolation factor
     }
 
     //---------------------------------------
@@ -147,7 +152,7 @@ class WebGLRenderer extends Renderer {
     init(){
         let gl = this.gl;
 
-        this.nrParticles = 1024;
+        this.nrParticles = 5000;
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
@@ -171,8 +176,11 @@ class WebGLRenderer extends Renderer {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         [this.updateInfoRead, this.updateInfoWrite] = [this.updateInfoWrite, this.updateInfoRead];
 
-        // setup datas for spatial hashing and bitonic sort
+        // setup lazy-updated range values.
+        const textureSize = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE);
         
+
+        // setup datas for spatial hashing and bitonic sort
         // setup hashing info
         // hashDimension^2 is size of hashTable.
         // resonable limit is < 4096, because of device specific limiatation, which is ample.
