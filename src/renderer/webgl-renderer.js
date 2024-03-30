@@ -147,7 +147,7 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("M", 0.08); // Mass [kg]
         shader.setFloat("weightRandomForce", 0.01);
         shader.setFloat("Rmax", 100.0); // max perception range [m]
-        shader.setFloat("du", 0.05); // reaction time [ms] [s]
+        shader.setFloat("du", 0.05); // reaction time [s]
         shader.setFloat("s", 0.05 * 0.1); // interpolation factor
         shader.setFloat("nc", 6.5); // interpolation factor [#agent]
         shader.setFloat("rh", 0.2); // radius of maximum separation [m]
@@ -173,7 +173,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // should be power of 2
-        this.nrParticles = 4096.0;
+        this.nrParticles = 4096.0 * 2.0;
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));

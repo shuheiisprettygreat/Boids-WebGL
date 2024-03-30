@@ -138,10 +138,9 @@ vec3 computeRandomForce(vec3 p){
     return randSphere * weightRandomForce; 
 }
 
-vec3 getSeparationVector(vec3 d){
+float getSeparationGaussian(vec3 d){
     float l = min(0.0, length(d) - rh);
-    float g = exp(-l*l/gammaSq);
-    return d*g;
+    return exp(-l*l/gammaSq);
 }
 
 void main(){
@@ -155,7 +154,7 @@ void main(){
 
     vec3 tangent = normalize(velocity);
     // NOTE : change later
-    bitangent = normalize(cross(tangent, vec3(0,1,0)));
+    bitangent = length(tangent - vec3(0,1,0) ) > 0.01 ? normalize(cross(tangent, vec3(0,1,0))) : bitangent;
     vec3 normal = cross(bitangent, tangent);
 
     vec3 force = vec3(0);
@@ -171,6 +170,8 @@ void main(){
     vec3 cohesionVectorSum = vec3(0.0);
     vec3 centralityVectorSum = vec3(0.0);
     vec3 alignmentVectorSum = vec3(0.0);
+
+    int debugCnt = 0;
 
     // Compute neighborhood.
     ivec3 grid = pos2grid(position);
@@ -194,29 +195,30 @@ void main(){
 
         for(int i=indexRange.x; i<indexRange.y; i++){
             int otherId = int(sampleAs1D(sortedHashedIdTex, texDimensions, i).x);
+            if(thisId == otherId) continue;
             vec3 posOther = sampleAs1D(positionTexRead, texDimensions, otherId).xyz;
             vec3 velOther = sampleAs1D(velocityTexRead, texDimensions, otherId).xyz;
             
             vec3 d = posOther - position; 
-            float dMag = d!=vec3(0.0) ? length(d) : 0.0;
+            float dMag = length(d);
+            vec3 nd = d / dMag;
             
             // this indivisual is inside perception range!
             float insideRange = 1.0 - step(neighborRange, dMag);
+            neighborCount += int(insideRange);
 
             // this indivisual is inside visible perception range!
-            float visible = step(dMag*COSBLINDANGLE, dot(tangent, d));
+            float visibleInsideRange = insideRange * step(dMag*COSBLINDANGLE, dot(tangent, d));
+            neighborVisibleCount += int(visibleInsideRange);
 
-            neighborCount += int(insideRange);
-            neighborVisibleCount += int(insideRange) * int(visible);
-
-            separationVectorSum += insideRange * getSeparationVector(d);
-            cohesionVectorSum += insideRange * visible * step(rh,dMag) * d;
+            separationVectorSum += insideRange * nd * getSeparationGaussian(d);
+            cohesionVectorSum += visibleInsideRange * nd * step(rh,dMag);
 
             float centralityCheck = 1.0 - step(2.0*neighborRange, dMag);
             centralityNeighborCount += int(centralityCheck);
-            centralityVectorSum += d*centralityCheck;
+            centralityVectorSum += nd*centralityCheck;
 
-            alignmentVectorSum += insideRange * visible * (normalize(velOther) - tangent);
+            alignmentVectorSum += visibleInsideRange * (normalize(velOther) - tangent);
         }
     }}}
 
@@ -224,14 +226,14 @@ void main(){
     vec3 separationForce = neighborCount== 0 ? vec3(0.0) : -ws/float(neighborCount)*separationVectorSum;
 
     float centralityFactor = centralityNeighborCount==0 ? 0.0 : length(centralityVectorSum) / float(centralityNeighborCount);
-    vec3 cohesionForce =  neighborVisibleCount==0 ? vec3(0.0) : centralityFactor*wc/float(neighborVisibleCount)*cohesionVectorSum;
+    vec3 cohesionForce =  neighborVisibleCount==0 ? vec3(0.0) : wc*centralityFactor/float(neighborVisibleCount)*cohesionVectorSum;
 
     vec3 alignmentForce = neighborVisibleCount==0 ? vec3(0.0) : wa*normalize(alignmentVectorSum);
 
     vec3 socialForce = separationForce + cohesionForce + alignmentForce;
 
     // roost attraction
-    vec3 n = normalize(position - vec3(roostXZ.x, 0.0, roostXZ.y));
+    vec3 n = normalize(position - vec3(roostXZ.x, position.y, roostXZ.y));
     float multiplier = mix(-1.0, 1.0, step(0.0, n.x*tangent.z - n.z*tangent.x));
     vec3 roostForceH = wRoostH * (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
     vec3 roostForceV = wRoostV * (roostHeight - position.y) * vec3(0.0, 1.0, 0.0);
@@ -255,11 +257,10 @@ void main(){
     float newNeighborRange = (1.0-s)*neighborRange + s*Rmax*(1.0 - float(neighborCount)/nc);
     newNeighborRange = clamp(newNeighborRange, 0.0, Rmax);
     range2 = vec4(range1.w, range2.xyz);
-    range1 = range1.xxyz;
-    range1.x = newNeighborRange;
+    range1 = vec4(newNeighborRange, range1.xyz);;
 
     // debug can be done with range texture's latter entries.
-    // range2.w = float(neighborCount);
+    // range2.w = float(debugCnt);
 
     velocity += force/M * deltaTime;
     position += velocity * deltaTime;

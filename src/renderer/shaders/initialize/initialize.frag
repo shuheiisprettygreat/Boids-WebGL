@@ -53,7 +53,7 @@ vec3 randomInsideSphere(){
 
 void main(){
 
-    vec3 position = randomInsideCylinder(150.0, 50.0);
+    vec3 position = randomInsideCylinder(150.0, 60.0);
     vec3 heading = randomInsideSphere();
     vec3 bitangent = normalize(cross(heading, vec3(0, 1, 0)));
     vec3 velocity = heading * 10.0;
