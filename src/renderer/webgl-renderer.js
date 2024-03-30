@@ -161,6 +161,10 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("roostHeight", 30.0); // roost altitude
         shader.setFloat("wRoostH", 0.01); // weighting factor horizontal attraction to the roost
         shader.setFloat("wRoostV", 0.2); // weighting factor vertical attraction to the roost
+        shader.setFloat("L0", 0.78); // default lift. equals to mg [N]
+        shader.setFloat("T0", 0.24) // Default thrust [N]
+        const LDRatio = 3.3; // Lift drag coefficient.
+        shader.setFloat("invLDRatio", 1.0/LDRatio); 
     }
 
     //---------------------------------------
@@ -169,7 +173,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // should be power of 2
-        this.nrParticles = 4096;
+        this.nrParticles = 4096.0;
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));

@@ -13,9 +13,9 @@ layout(location=0) out vec4 FragColor;
 #define P3 742219
 
 ivec3 grid2positiveGrid(ivec3 grid){
-    grid.x = grid.x<0 ? -grid.x*2 : grid.x*2+1;
-    grid.y = grid.y<0 ? -grid.y*2 : grid.y*2+1;
-    grid.z = grid.z<0 ? -grid.z*2 : grid.z*2+1;
+    grid.x = grid.x<0 ? -grid.x*2-1 : grid.x*2;
+    grid.y = grid.y<0 ? -grid.y*2-1 : grid.y*2;
+    grid.z = grid.z<0 ? -grid.z*2-1 : grid.z*2;
     return grid;
 }
 

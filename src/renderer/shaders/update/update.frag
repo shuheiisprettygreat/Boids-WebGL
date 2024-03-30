@@ -31,6 +31,13 @@ uniform vec2 roostXZ;
 uniform float roostHeight;
 uniform float wRoostH;
 uniform float wRoostV;
+uniform float L0;
+uniform float T0;
+uniform float invLDRatio;
+
+// #define L0 0.78
+// #define T0 0.24
+// #define invLDRatio 0.3030
 
 uniform int hashDimension;
 
@@ -58,9 +65,9 @@ layout(location=4) out vec4 rangeColor2;
 #define PI 3.1415926
 
 ivec3 grid2positiveGrid(ivec3 grid){
-    grid.x = grid.x<0 ? -grid.x*2 : grid.x*2+1;
-    grid.y = grid.y<0 ? -grid.y*2 : grid.y*2+1;
-    grid.z = grid.z<0 ? -grid.z*2 : grid.z*2+1;
+    grid.x = grid.x<0 ? -grid.x*2-1 : grid.x*2;
+    grid.y = grid.y<0 ? -grid.y*2-1 : grid.y*2;
+    grid.z = grid.z<0 ? -grid.z*2-1 : grid.z*2;
     return grid;
 }
 
@@ -147,7 +154,9 @@ void main(){
     vec4 range2 = texelFetch(range2Tex, ifrag, 0);
 
     vec3 tangent = normalize(velocity);
+    // NOTE : change later
     bitangent = normalize(cross(tangent, vec3(0,1,0)));
+    vec3 normal = cross(bitangent, tangent);
 
     vec3 force = vec3(0);
     
@@ -227,11 +236,18 @@ void main(){
     vec3 roostForceH = wRoostH * (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
     vec3 roostForceV = wRoostV * (roostHeight - position.y) * vec3(0.0, 1.0, 0.0);
 
+    // physics of flight
+    float v2 = dot(velocity, velocity) / (v0*v0);
+    float lift = v2*L0;
+    float drag = invLDRatio * v2 * L0;
+    vec3 flightForce = lift*normal - drag*tangent + T0*tangent + vec3(0.0, -L0, 0.0);
+
     force += socialForce;
     force += roostForceH;
     force += roostForceV;
     force += computeCruiseForce(velocity);
     force += computeRandomForce(position);
+    force += flightForce;
 
     // force += -position * 0.1 * step(200.0, length(position));
 

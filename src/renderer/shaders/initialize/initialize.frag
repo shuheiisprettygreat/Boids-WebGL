@@ -55,7 +55,7 @@ void main(){
 
     vec3 position = randomInsideCylinder(150.0, 50.0);
     vec3 heading = randomInsideSphere();
-    vec3 bitangent = cross(heading, vec3(0, 1, 0));
+    vec3 bitangent = normalize(cross(heading, vec3(0, 1, 0)));
     vec3 velocity = heading * 10.0;
 
     positionColor = vec4(position, 1.0);
