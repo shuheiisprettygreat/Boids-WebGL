@@ -88,6 +88,8 @@ class WebGLRenderer extends Renderer {
         this.updateShader.setInt("sortedHashedIdTex", 3);
         this.updateShader.setInt("hash2indicesBeginTex", 4);
         this.updateShader.setInt("hash2indicesEndTex", 5);
+        this.updateShader.setInt("range1Tex", 6);
+        this.updateShader.setInt("range2Tex", 7);
         this.setupBoidsParams(this.updateShader);
 
         // copy data from data-texture to buffers. 
@@ -138,13 +140,21 @@ class WebGLRenderer extends Renderer {
     setupBoidsParams(shader){
         shader.use();
 
-        shader.setFloat("v0", 10.0); // Cruise Speed
-        shader.setFloat("tau", 3.0); // relaxation time
-        shader.setFloat("M", 0.08); // Mass
-        shader.setFloat("weightRandomForce", 0.01); 
-        shader.setFloat("Rmax", 100.0); // max perception range
-        shader.setFloat("du", 50.0); // reaction time
-        shader.setFloat("s", 50.0 * 0.1) // interpolation factor
+        this.maxPerceptionRadius = 100.0;
+
+        shader.setFloat("v0", 10.0); // Cruise Speed [m/s]
+        shader.setFloat("tau", 3.0); // relaxation time [s]
+        shader.setFloat("M", 0.08); // Mass [kg]
+        shader.setFloat("weightRandomForce", 0.01);
+        shader.setFloat("Rmax", 100.0); // max perception range [m]
+        shader.setFloat("du", 0.05); // reaction time [ms] [s]
+        shader.setFloat("s", 0.05 * 0.1); // interpolation factor
+        shader.setFloat("nc", 6.5); // interpolation factor [#agent]
+        shader.setFloat("rh", 0.2); // radius of maximum separation [m]
+        const Rsep = 4.0; // separation radius [m]
+        // paramater of normal distribution. take 0.01 on Rsep.
+        shader.setFloat("gammaSq", -Rsep*Rsep/Math.log(0.01));
+        shader.setFloat("ws", 1.0);  // weighting factor for separation force.
     }
 
     //---------------------------------------
@@ -152,7 +162,7 @@ class WebGLRenderer extends Renderer {
     init(){
         let gl = this.gl;
 
-        this.nrParticles = 5000;
+        this.nrParticles = 4096;
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
@@ -163,10 +173,14 @@ class WebGLRenderer extends Renderer {
         const velocityTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const bitangentTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const bitangentTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const fb1 = this.createFramebuffer_mrt(gl, [positionTexture1, velocityTexture1, bitangentTexture1]);
-        const fb2 = this.createFramebuffer_mrt(gl, [positionTexture2, velocityTexture2, bitangentTexture2]);
-        this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1, bitangent: bitangentTexture1};
-        this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2, bitangent: bitangentTexture2};
+        const rangeTexture1Read = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const rangeTexture2Read = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const rangeTexture1Write = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const rangeTexture2Write = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const fb1 = this.createFramebuffer_mrt(gl, [positionTexture1, velocityTexture1, bitangentTexture1, rangeTexture1Read, rangeTexture2Read]);
+        const fb2 = this.createFramebuffer_mrt(gl, [positionTexture2, velocityTexture2, bitangentTexture2, rangeTexture1Write, rangeTexture2Write]);
+        this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1, bitangent: bitangentTexture1, range1: rangeTexture1Read, range2: rangeTexture2Read};
+        this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2, bitangent: bitangentTexture2, range1: rangeTexture1Write, range2: rangeTexture2Write};
 
         // initialize positions / velocities.
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
@@ -175,9 +189,6 @@ class WebGLRenderer extends Renderer {
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         [this.updateInfoRead, this.updateInfoWrite] = [this.updateInfoWrite, this.updateInfoRead];
-
-        // setup lazy-updated range values.
-        const textureSize = this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE);
         
 
         // setup datas for spatial hashing and bitonic sort
@@ -271,7 +282,7 @@ class WebGLRenderer extends Renderer {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.sortInfoWrite.fb);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.use();
-            this.hashingShader.setTexture(0, this.updateInfoRead.possition);
+            this.hashingShader.setTexture(0, this.updateInfoRead.position);
             this.hashingShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.setFloat("gridSize", this.maxPerceptionRadius);
             this.hashingShader.setInt("hashSize", this.hashDimension * this.hashDimension);
@@ -338,6 +349,8 @@ class WebGLRenderer extends Renderer {
             this.updateShader.setTexture(3, this.sortInfoRead.tex);
             this.updateShader.setTexture(4, this.hash2indicesInfo.texBegin);
             this.updateShader.setTexture(5, this.hash2indicesInfo.texEnd);
+            this.updateShader.setTexture(6, this.updateInfoRead.range1);
+            this.updateShader.setTexture(7, this.updateInfoRead.range2);
             this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
             this.updateShader.setInt("nrParticle", this.nrParticles);

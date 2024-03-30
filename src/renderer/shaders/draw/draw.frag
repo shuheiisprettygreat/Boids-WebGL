@@ -19,7 +19,7 @@ void main() {
     diff = clamp(diff, 0.0, 1.0);
     diff = diff*0.5 + 0.5;
     diff = diff*diff;
-    vec3 diffuse = mix(vec3(0.3, 0.1, 0.1), vec3(1.0,1.0,0.7),diff);
+    vec3 diffuse = mix(vec3(0.3, 0.1, 0.1), vec3(0.92,0.9,1.0),diff);
 
     vec3 V = normalize(camera - iPos);
     vec3 H = normalize(normalize(light-iPos) + V);

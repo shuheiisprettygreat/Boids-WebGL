@@ -4,6 +4,12 @@ precision mediump float;
 uniform sampler2D positionTexRead;
 uniform sampler2D velocityTexRead;
 uniform sampler2D bitangentTexRead;
+uniform sampler2D sortedHashedIdTex;
+uniform sampler2D hash2indicesBeginTex;
+uniform sampler2D hash2indicesEndTex;
+uniform sampler2D range1Tex;
+uniform sampler2D range2Tex;
+
 uniform ivec2 texDimensions;
 uniform float deltaTime;
 uniform int nrParticle;
@@ -15,10 +21,11 @@ uniform float weightRandomForce;
 uniform float Rmax;
 uniform float du;
 uniform float s;
+uniform float nc;
+uniform float rh;
+uniform float gammaSq;
+uniform float ws;
 
-uniform sampler2D sortedHashedIdTex;
-uniform sampler2D hash2indicesBeginTex;
-uniform sampler2D hash2indicesEndTex;
 uniform int hashDimension;
 
 uniform float gridSize;
@@ -27,6 +34,8 @@ uniform int hashSize;
 layout(location=0) out vec4 positionColor;
 layout(location=1) out vec4 VelocityColor;
 layout(location=2) out vec4 bitangentColor;
+layout(location=3) out vec4 rangeColor1;
+layout(location=4) out vec4 rangeColor2;
 
 #define TAU 6.28318531
 
@@ -113,17 +122,82 @@ vec3 computeRandomForce(vec3 p){
     return randSphere * weightRandomForce; 
 }
 
+vec3 getSeparationVector(vec3 d){
+    float l = min(0.0, length(d) - rh);
+    float g = exp(-l*l/gammaSq);
+    return d*g;
+}
+
 void main(){
     vec3 position = texelFetch(positionTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
     vec3 velocity = texelFetch(velocityTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
     vec3 bitangent = texelFetch(bitangentTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
+    vec4 range1 = texelFetch(range1Tex, ivec2(gl_FragCoord.xy), 0);
+    vec4 range2 = texelFetch(range2Tex, ivec2(gl_FragCoord.xy), 0);
 
     vec3 force = vec3(0);
     force += computeCruiseForce(velocity);
     force += computeRandomForce(position);
 
     // topological interaction
-    // float r = updateRange(position, )
+    // NOTE : range2.x is range updated on 5 frame before.
+    float neighborRange = range2.x; 
+    int neighborCount = 0;
+
+    vec3 separationVectorSum = vec3(0.0);
+
+    // Compute neighborhood.
+    ivec3 grid = pos2grid(position);
+    for(int dx=-1; dx<2; dx++){ for(int dy=-1; dy<2; dy++){ for(int dz=-1; dz<2; dz++){
+        ivec3 neighborGrid = grid2positiveGrid(grid + ivec3(dx, dy, dz));
+        int neighborHash = grid2hash(neighborGrid);
+
+        ivec2 indexRangeBegin = ivec2(
+            sampleAs1D(hash2indicesBeginTex, ivec2(hashDimension, hashDimension), neighborHash).xy
+        );
+        ivec2 indexRangeEnd = ivec2(
+            sampleAs1D(hash2indicesEndTex, ivec2(hashDimension, hashDimension), neighborHash).xy
+        );
+
+        ivec2 indexRange;
+        if(indexRangeBegin.y != 0){
+            indexRange = indexRangeBegin;
+        } else {
+            indexRange = ivec2(indexRangeBegin.x, indexRangeEnd.y);
+        }
+
+        for(int i=indexRange.x; i<indexRange.y; i++){
+            int otherId = int(sampleAs1D(sortedHashedIdTex, texDimensions, i).x);
+            vec3 posOther = sampleAs1D(positionTexRead, texDimensions, otherId).xyz;
+            vec3 velOther = sampleAs1D(velocityTexRead, texDimensions, otherId).xyz;
+            
+            vec3 diff = posOther - position;
+            float distSq = dot(diff, diff);
+            
+            // this indivisual is inside parception range!
+            if(distSq < neighborRange*neighborRange){
+                neighborCount++;
+                separationVectorSum += getSeparationVector(diff);
+            }
+        }
+    }}}
+
+    vec3 separationForce = -ws/float(neighborCount)*separationVectorSum;
+
+    force += separationForce;
+
+    if(length(position) > 100.0)
+        force += -position * 0.1;
+
+    // Update Neighbor Range
+    float newNeighborRange = (1.0-s)*neighborRange + s*Rmax*(1.0 - float(neighborCount)/nc);
+    newNeighborRange = clamp(newNeighborRange, 0.0, Rmax);
+    range2 = vec4(range1.w, range2.xyz);
+    range1 = range1.xxyz;
+    range1.x = newNeighborRange;
+
+    // debug can be done with range texture's latter entries.
+    // range2.w = float(neighborCount);
 
     velocity += force/M * deltaTime;
     position += velocity * deltaTime;
@@ -131,4 +205,6 @@ void main(){
     positionColor = vec4(position, 1.0);
     VelocityColor = vec4(velocity, 1.0);
     bitangentColor = vec4(bitangent, 1.0);
+    rangeColor1 = range1;
+    rangeColor2 = range2;
 }

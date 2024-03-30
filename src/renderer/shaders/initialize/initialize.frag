@@ -4,6 +4,8 @@ precision mediump float;
 layout(location=0) out vec4 positionColor;
 layout(location=1) out vec4 VelocityColor;
 layout(location=2) out vec4 bitangentColor;
+layout(location=3) out vec4 rangeColor1;
+layout(location=4) out vec4 rangeColor2;
 
 #define TAU 6.2831853
 
@@ -53,12 +55,15 @@ void main(){
 
     vec3 position = randomInsideCylinder(150.0, 50.0);
     vec3 heading = randomInsideSphere();
-
     vec3 bitangent = cross(heading, vec3(0, 1, 0));
-
     vec3 velocity = heading * 10.0;
 
     positionColor = vec4(position, 1.0);
     VelocityColor = vec4(velocity, 1.0);
     bitangentColor = vec4(bitangent, 1.0);
+    
+    // somehow not work with zero.
+    float initialRange = 0.01;
+    rangeColor1 = vec4(initialRange);
+    rangeColor2 = vec4(initialRange);
 }
