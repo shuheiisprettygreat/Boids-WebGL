@@ -143,7 +143,7 @@ class WebGLRenderer extends Renderer {
         this.maxPerceptionRadius = 100.0;
 
         shader.setFloat("v0", 10.0); // Cruise Speed [m/s]
-        shader.setFloat("tau", 3.0); // relaxation time [s]
+        shader.setFloat("tau",0.4); // relaxation time [s]
         shader.setFloat("M", 0.08); // Mass [kg]
         shader.setFloat("weightRandomForce", 0.01);
         shader.setFloat("Rmax", 100.0); // max perception range [m]
@@ -155,6 +155,12 @@ class WebGLRenderer extends Renderer {
         // paramater of normal distribution. take 0.01 on Rsep.
         shader.setFloat("gammaSq", -Rsep*Rsep/Math.log(0.01));
         shader.setFloat("ws", 1.0);  // weighting factor for separation force.
+        shader.setFloat("wa", 0.5);  // weighting factor for alignment force.
+        shader.setFloat("wc", 1.0);  // weighting factor for cohesion force.
+        shader.setVec2("roostXZ", 0.0, 0.0); // roost position
+        shader.setFloat("roostHeight", 30.0); // roost altitude
+        shader.setFloat("wRoostH", 0.01); // weighting factor horizontal attraction to the roost
+        shader.setFloat("wRoostV", 0.2); // weighting factor vertical attraction to the roost
     }
 
     //---------------------------------------
@@ -162,6 +168,7 @@ class WebGLRenderer extends Renderer {
     init(){
         let gl = this.gl;
 
+        // should be power of 2
         this.nrParticles = 4096;
 
         // setup data texture and framebuffers

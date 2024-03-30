@@ -25,6 +25,12 @@ uniform float nc;
 uniform float rh;
 uniform float gammaSq;
 uniform float ws;
+uniform float wa;
+uniform float wc;
+uniform vec2 roostXZ;
+uniform float roostHeight;
+uniform float wRoostH;
+uniform float wRoostV;
 
 uniform int hashDimension;
 
@@ -38,6 +44,9 @@ layout(location=3) out vec4 rangeColor1;
 layout(location=4) out vec4 rangeColor2;
 
 #define TAU 6.28318531
+
+#define BLINDANGLE (TAU*0.25)
+#define COSBLINDANGLE cos(TAU*0.5 - BLINDANGLE*0.5)
 
 // === ======= ===
 // === 3d hash ===
@@ -129,22 +138,30 @@ vec3 getSeparationVector(vec3 d){
 }
 
 void main(){
-    vec3 position = texelFetch(positionTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
-    vec3 velocity = texelFetch(velocityTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
-    vec3 bitangent = texelFetch(bitangentTexRead, ivec2(gl_FragCoord.xy), 0).xyz;
-    vec4 range1 = texelFetch(range1Tex, ivec2(gl_FragCoord.xy), 0);
-    vec4 range2 = texelFetch(range2Tex, ivec2(gl_FragCoord.xy), 0);
+    ivec2 ifrag = ivec2(gl_FragCoord.xy);
+    int thisId = ifrag.x + ifrag.y*texDimensions.x;
+    vec3 position = texelFetch(positionTexRead, ifrag, 0).xyz;
+    vec3 velocity = texelFetch(velocityTexRead, ifrag, 0).xyz;
+    vec3 bitangent = texelFetch(bitangentTexRead, ifrag, 0).xyz;
+    vec4 range1 = texelFetch(range1Tex, ifrag, 0);
+    vec4 range2 = texelFetch(range2Tex, ifrag, 0);
+
+    vec3 tangent = normalize(velocity);
+    bitangent = normalize(cross(tangent, vec3(0,1,0)));
 
     vec3 force = vec3(0);
-    force += computeCruiseForce(velocity);
-    force += computeRandomForce(position);
-
+    
     // topological interaction
     // NOTE : range2.x is range updated on 5 frame before.
     float neighborRange = range2.x; 
     int neighborCount = 0;
+    int neighborVisibleCount = 0;
+    int centralityNeighborCount = 0;
 
     vec3 separationVectorSum = vec3(0.0);
+    vec3 cohesionVectorSum = vec3(0.0);
+    vec3 centralityVectorSum = vec3(0.0);
+    vec3 alignmentVectorSum = vec3(0.0);
 
     // Compute neighborhood.
     ivec3 grid = pos2grid(position);
@@ -171,23 +188,52 @@ void main(){
             vec3 posOther = sampleAs1D(positionTexRead, texDimensions, otherId).xyz;
             vec3 velOther = sampleAs1D(velocityTexRead, texDimensions, otherId).xyz;
             
-            vec3 diff = posOther - position;
-            float distSq = dot(diff, diff);
+            vec3 d = posOther - position; 
+            float dMag = d!=vec3(0.0) ? length(d) : 0.0;
             
-            // this indivisual is inside parception range!
-            if(distSq < neighborRange*neighborRange){
-                neighborCount++;
-                separationVectorSum += getSeparationVector(diff);
-            }
+            // this indivisual is inside perception range!
+            float insideRange = 1.0 - step(neighborRange, dMag);
+
+            // this indivisual is inside visible perception range!
+            float visible = step(dMag*COSBLINDANGLE, dot(tangent, d));
+
+            neighborCount += int(insideRange);
+            neighborVisibleCount += int(insideRange) * int(visible);
+
+            separationVectorSum += insideRange * getSeparationVector(d);
+            cohesionVectorSum += insideRange * visible * step(rh,dMag) * d;
+
+            float centralityCheck = 1.0 - step(2.0*neighborRange, dMag);
+            centralityNeighborCount += int(centralityCheck);
+            centralityVectorSum += d*centralityCheck;
+
+            alignmentVectorSum += insideRange * visible * (normalize(velOther) - tangent);
         }
     }}}
 
-    vec3 separationForce = -ws/float(neighborCount)*separationVectorSum;
+    // compute social forces
+    vec3 separationForce = neighborCount== 0 ? vec3(0.0) : -ws/float(neighborCount)*separationVectorSum;
 
-    force += separationForce;
+    float centralityFactor = centralityNeighborCount==0 ? 0.0 : length(centralityVectorSum) / float(centralityNeighborCount);
+    vec3 cohesionForce =  neighborVisibleCount==0 ? vec3(0.0) : centralityFactor*wc/float(neighborVisibleCount)*cohesionVectorSum;
 
-    if(length(position) > 100.0)
-        force += -position * 0.1;
+    vec3 alignmentForce = neighborVisibleCount==0 ? vec3(0.0) : wa*normalize(alignmentVectorSum);
+
+    vec3 socialForce = separationForce + cohesionForce + alignmentForce;
+
+    // roost attraction
+    vec3 n = normalize(position - vec3(roostXZ.x, 0.0, roostXZ.y));
+    float multiplier = mix(-1.0, 1.0, step(0.0, n.x*tangent.z - n.z*tangent.x));
+    vec3 roostForceH = wRoostH * (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
+    vec3 roostForceV = wRoostV * (roostHeight - position.y) * vec3(0.0, 1.0, 0.0);
+
+    force += socialForce;
+    force += roostForceH;
+    force += roostForceV;
+    force += computeCruiseForce(velocity);
+    force += computeRandomForce(position);
+
+    // force += -position * 0.1 * step(200.0, length(position));
 
     // Update Neighbor Range
     float newNeighborRange = (1.0-s)*neighborRange + s*Rmax*(1.0 - float(neighborCount)/nc);
