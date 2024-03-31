@@ -3,7 +3,6 @@ precision mediump float;
 
 uniform sampler2D positionTexRead;
 uniform sampler2D velocityTexRead;
-uniform sampler2D bitangentTexRead;
 uniform sampler2D sortedHashedIdTex;
 uniform sampler2D hash2indicesBeginTex;
 uniform sampler2D hash2indicesEndTex;
@@ -11,6 +10,7 @@ uniform sampler2D range1Tex;
 uniform sampler2D range2Tex;
 
 uniform ivec2 texDimensions;
+uniform float time;
 uniform float deltaTime;
 uniform int nrParticle;
 
@@ -34,6 +34,8 @@ uniform float wRoostV;
 uniform float L0;
 uniform float T0;
 uniform float invLDRatio;
+uniform float wRollIn;
+uniform float wRollOut;
 
 // #define L0 0.78
 // #define T0 0.24
@@ -46,9 +48,8 @@ uniform int hashSize;
 
 layout(location=0) out vec4 positionColor;
 layout(location=1) out vec4 VelocityColor;
-layout(location=2) out vec4 bitangentColor;
-layout(location=3) out vec4 rangeColor1;
-layout(location=4) out vec4 rangeColor2;
+layout(location=2) out vec4 rangeColor1;
+layout(location=3) out vec4 rangeColor2;
 
 #define TAU 6.28318531
 
@@ -143,25 +144,30 @@ float getSeparationGaussian(vec3 d){
     return exp(-l*l/gammaSq);
 }
 
+vec3 rotateAroundAxis(vec3 axis, vec3 v, float angle){
+    float ca = cos(angle);
+    return ca*v + (1.0-ca)*dot(v,axis)*axis + sin(angle)*cross(axis, v);
+}
+
 void main(){
     ivec2 ifrag = ivec2(gl_FragCoord.xy);
     int thisId = ifrag.x + ifrag.y*texDimensions.x;
-    vec3 position = texelFetch(positionTexRead, ifrag, 0).xyz;
+
+    vec4 positionAndBanking = texelFetch(positionTexRead, ifrag, 0);
     vec3 velocity = texelFetch(velocityTexRead, ifrag, 0).xyz;
-    vec3 bitangent = texelFetch(bitangentTexRead, ifrag, 0).xyz;
     vec4 range1 = texelFetch(range1Tex, ifrag, 0);
     vec4 range2 = texelFetch(range2Tex, ifrag, 0);
 
+    vec3 position = positionAndBanking.xyz;
+    float bankingAngle = positionAndBanking.w;
     vec3 tangent = normalize(velocity);
-    // NOTE : change later
-    bitangent = length(tangent - vec3(0,1,0) ) > 0.01 ? normalize(cross(tangent, vec3(0,1,0))) : bitangent;
+    vec3 bitangent = normalize(cross(tangent, vec3(0, 1, 0)));
+    bitangent = rotateAroundAxis(tangent, bitangent, bankingAngle);
     vec3 normal = cross(bitangent, tangent);
-
-    vec3 force = vec3(0);
-    
+     
     // topological interaction
     // NOTE : range2.x is range updated on 5 frame before.
-    float neighborRange = range2.x; 
+    float neighborRange = range2.z; 
     int neighborCount = 0;
     int neighborVisibleCount = 0;
     int centralityNeighborCount = 0;
@@ -170,8 +176,6 @@ void main(){
     vec3 cohesionVectorSum = vec3(0.0);
     vec3 centralityVectorSum = vec3(0.0);
     vec3 alignmentVectorSum = vec3(0.0);
-
-    int debugCnt = 0;
 
     // Compute neighborhood.
     ivec3 grid = pos2grid(position);
@@ -236,8 +240,13 @@ void main(){
     float l = length(position - vec3(roostXZ.x, position.y, roostXZ.y));
     vec3 n = normalize(position - vec3(roostXZ.x, position.y, roostXZ.y));
     float multiplier = mix(-1.0, 1.0, step(0.0, n.x*tangent.z - n.z*tangent.x));
-    vec3 roostForceH = wRoostH * (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
+    vec3 roostForceH = (wRoostH + l*0.0002)* (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
     vec3 roostForceV = wRoostV * (roostHeight - position.y) * vec3(0.0, 1.0, 0.0);
+
+    vec3 steeringForce = socialForce + roostForceH + roostForceV;
+    steeringForce += computeCruiseForce(velocity);
+    steeringForce += computeRandomForce(position);
+    // steeringForce = -bitangent*0.2;
 
     // physics of flight
     float v2 = dot(velocity, velocity) / (v0*v0);
@@ -245,30 +254,34 @@ void main(){
     float drag = invLDRatio * v2 * L0;
     vec3 flightForce = lift*normal - drag*tangent + T0*tangent + vec3(0.0, -L0, 0.0);
 
-    force += socialForce;
-    force += roostForceH;
-    force += roostForceV;
-    force += computeCruiseForce(velocity);
-    force += computeRandomForce(position);
-    force += flightForce;
-
+    vec3 force = steeringForce + flightForce;
     // force += -position * 0.1 * step(200.0, length(position));
+
+    // Update Banking angle
+    float lateralAcceleration = dot(steeringForce, bitangent);
+    float tanRollIn = wRollIn * lateralAcceleration * deltaTime;
+    float tanRollOut = wRollOut * sin(bankingAngle) * deltaTime;
+    float rollIn = atan(tanRollIn);
+    float rollOut = atan(tanRollOut);
+    float newBankingAngle = bankingAngle + rollIn - rollOut;
+    float u = 0.06;
+    newBankingAngle = (1.0-u) * bankingAngle + u * newBankingAngle;
+    newBankingAngle = clamp(newBankingAngle, -TAU*0.25, TAU*0.25);
 
     // Update Neighbor Range
     float newNeighborRange = (1.0-s)*neighborRange + s*Rmax*(1.0 - float(neighborCount)/nc);
     newNeighborRange = clamp(newNeighborRange, 0.0, Rmax);
     range2 = vec4(range1.w, range2.xyz);
-    range1 = vec4(newNeighborRange, range1.xyz);;
+    range1 = vec4(newNeighborRange, range1.xyz);
 
     // debug can be done with range texture's latter entries.
-    // range2.w = float(debugCnt);
+    // range2.yzw = vec3(tanRollIn, tanRollOut, dot(normalize(steeringForce), bitangent));
 
     velocity += force/M * deltaTime;
     position += velocity * deltaTime;
 
-    positionColor = vec4(position, 1.0);
+    positionColor = vec4(position, newBankingAngle);
     VelocityColor = vec4(velocity, 1.0);
-    bitangentColor = vec4(bitangent, 1.0);
     rangeColor1 = range1;
     rangeColor2 = range2;
 }

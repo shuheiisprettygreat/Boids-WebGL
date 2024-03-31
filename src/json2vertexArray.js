@@ -1,12 +1,13 @@
 import jsonText1 from './json/torus.json?raw';
 import jsonText2 from './json/bird.json?raw';
+import jsonText3 from './json/bird2.json?raw';
 
 class Json2Va{
     
     constructor(gl){
         this.gl = gl;
 
-        const jsons = [jsonText1, jsonText2];
+        const jsons = [jsonText3];
         this.vaList = [];
         this.sizeList = [];
 

@@ -84,20 +84,18 @@ class WebGLRenderer extends Renderer {
         this.updateShader.use();
         this.updateShader.setInt("positionTexRead", 0);
         this.updateShader.setInt("velocityTexRead", 1);
-        this.updateShader.setInt("bitangentTexRead", 2);
-        this.updateShader.setInt("sortedHashedIdTex", 3);
-        this.updateShader.setInt("hash2indicesBeginTex", 4);
-        this.updateShader.setInt("hash2indicesEndTex", 5);
-        this.updateShader.setInt("range1Tex", 6);
-        this.updateShader.setInt("range2Tex", 7);
+        this.updateShader.setInt("sortedHashedIdTex", 2);
+        this.updateShader.setInt("hash2indicesBeginTex", 3);
+        this.updateShader.setInt("hash2indicesEndTex", 4);
+        this.updateShader.setInt("range1Tex", 5);
+        this.updateShader.setInt("range2Tex", 6);
         this.setupBoidsParams(this.updateShader);
 
         // copy data from data-texture to buffers. 
-        this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['position', 'velocity', 'bitangent']);
+        this.copyShader = new Shader(this.gl, copyToBufferVsSource, copyToBufferFsSource, ['positionAndBanking', 'velocity']);
         this.copyShader.use();
         this.copyShader.setInt("positionTexRead", 0);
         this.copyShader.setInt("velocityTexRead", 1);
-        this.copyShader.setInt("bitangentTexRead", 2);
         
         // shader for drawing. 
         this.drawShader = new Shader(this.gl, drawVsSource, drawFsSource);
@@ -142,7 +140,7 @@ class WebGLRenderer extends Renderer {
 
         this.maxPerceptionRadius = 100.0;
 
-        shader.setFloat("v0", 10.0); // Cruise Speed [m/s]
+        shader.setFloat("v0", 20.0); // Cruise Speed [m/s]
         shader.setFloat("tau",0.07); // relaxation time [s]
         shader.setFloat("M", 0.08); // Mass [kg]
         shader.setFloat("weightRandomForce", 0.01);
@@ -165,6 +163,8 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("T0", 0.24) // Default thrust [N]
         const LDRatio = 3.3; // Lift drag coefficient.
         shader.setFloat("invLDRatio", 1.0/LDRatio); 
+        shader.setFloat("wRollIn", 10.0);  // banking control
+        shader.setFloat("wRollOut", 1.0);  // banking control
     }
 
     //---------------------------------------
@@ -173,7 +173,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // should be power of 2
-        this.nrParticles = 2048;
+        this.nrParticles = 2048*2.0;
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
@@ -182,16 +182,14 @@ class WebGLRenderer extends Renderer {
         const positionTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const bitangentTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const bitangentTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const rangeTexture1Read = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const rangeTexture2Read = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const rangeTexture1Write = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const rangeTexture2Write = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
-        const fb1 = this.createFramebuffer_mrt(gl, [positionTexture1, velocityTexture1, bitangentTexture1, rangeTexture1Read, rangeTexture2Read]);
-        const fb2 = this.createFramebuffer_mrt(gl, [positionTexture2, velocityTexture2, bitangentTexture2, rangeTexture1Write, rangeTexture2Write]);
-        this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1, bitangent: bitangentTexture1, range1: rangeTexture1Read, range2: rangeTexture2Read};
-        this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2, bitangent: bitangentTexture2, range1: rangeTexture1Write, range2: rangeTexture2Write};
+        const fb1 = this.createFramebuffer_mrt(gl, [positionTexture1, velocityTexture1, rangeTexture1Read, rangeTexture2Read]);
+        const fb2 = this.createFramebuffer_mrt(gl, [positionTexture2, velocityTexture2, rangeTexture1Write, rangeTexture2Write]);
+        this.updateInfoRead  = {fb: fb1, position: positionTexture1, velocity: velocityTexture1, range1: rangeTexture1Read, range2: rangeTexture2Read};
+        this.updateInfoWrite = {fb: fb2, position: positionTexture2, velocity: velocityTexture2, range1: rangeTexture1Write, range2: rangeTexture2Write};
 
         // initialize positions / velocities.
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
@@ -224,32 +222,27 @@ class WebGLRenderer extends Renderer {
         this.hash2indicesInfo = {fbBegin: fbIndicesBegin, fbEnd:fbIndicesEnd, texBegin:hash2indicesTexture_begin, texEnd:hash2indicesTexture_end};
 
         // setup transform feedbacks
-        const positionBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
+        const positionBuffer = createBuffer(gl, 16 * this.nrParticles, gl.STREAM_COPY);
         const velocityBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
-        const bitangentBuffer = createBuffer(gl, 12 * this.nrParticles, gl.STREAM_COPY);
-        const tf = this.createTransformFeedback(gl, [positionBuffer, velocityBuffer, bitangentBuffer]);
+        const tf = this.createTransformFeedback(gl, [positionBuffer, velocityBuffer]);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
         this.copyInfo = {tf:tf};
 
         // setup datas to draw.
-        const drawVa = this.parser.vaList[1];
+        const drawVa = this.parser.vaList[0];
         gl.bindVertexArray(drawVa);
             gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
             gl.enableVertexAttribArray(3);
-            gl.vertexAttribPointer(3, 3, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribPointer(3, 4, gl.FLOAT, false, 0, 0);
             gl.vertexAttribDivisor(3, 1);
             gl.bindBuffer(gl.ARRAY_BUFFER, velocityBuffer);
             gl.enableVertexAttribArray(4);
             gl.vertexAttribPointer(4, 3, gl.FLOAT, false, 0, 0);
             gl.vertexAttribDivisor(4, 1);
-            gl.bindBuffer(gl.ARRAY_BUFFER, bitangentBuffer);
-            gl.enableVertexAttribArray(5);
-            gl.vertexAttribPointer(5, 3, gl.FLOAT, false, 0, 0);
-            gl.vertexAttribDivisor(5, 1);
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
-        this.drawInfo = {va:drawVa, size:this.parser.sizeList[1]};
+        this.drawInfo = {va:drawVa, size:this.parser.sizeList[0]};
 
     }
 
@@ -356,14 +349,14 @@ class WebGLRenderer extends Renderer {
             this.updateShader.use();
             this.updateShader.setTexture(0, this.updateInfoRead.position);
             this.updateShader.setTexture(1, this.updateInfoRead.velocity);
-            this.updateShader.setTexture(2, this.updateInfoRead.bitangent);
-            this.updateShader.setTexture(3, this.sortInfoRead.tex);
-            this.updateShader.setTexture(4, this.hash2indicesInfo.texBegin);
-            this.updateShader.setTexture(5, this.hash2indicesInfo.texEnd);
-            this.updateShader.setTexture(6, this.updateInfoRead.range1);
-            this.updateShader.setTexture(7, this.updateInfoRead.range2);
+            this.updateShader.setTexture(2, this.sortInfoRead.tex);
+            this.updateShader.setTexture(3, this.hash2indicesInfo.texBegin);
+            this.updateShader.setTexture(4, this.hash2indicesInfo.texEnd);
+            this.updateShader.setTexture(5, this.updateInfoRead.range1);
+            this.updateShader.setTexture(6, this.updateInfoRead.range2);
             this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.setFloat("deltaTime", 0.01);
+            this.updateShader.setFloat("time", this.timestamp);
             this.updateShader.setInt("nrParticle", this.nrParticles);
             this.updateShader.setInt("hashDimension", this.hashDimension);
             this.updateShader.setFloat("gridSize", this.maxPerceptionRadius);
@@ -379,7 +372,6 @@ class WebGLRenderer extends Renderer {
         this.copyShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
         this.copyShader.setTexture(0, this.updateInfoRead.position);
         this.copyShader.setTexture(1, this.updateInfoRead.velocity);
-        this.copyShader.setTexture(2, this.updateInfoRead.bitangent);
 
         gl.clear(gl.COLOR_BUFFER_BIT);
         gl.bindVertexArray(null);
@@ -477,6 +469,7 @@ class WebGLRenderer extends Renderer {
         this.drawShader.use();
         this.drawShader.setMat4("model", model);
         this.drawShader.setVec3("camera", this.camera.pos[0], this.camera.pos[1], this.camera.pos[2]);
+        this.drawShader.setFloat("t", this.timestamp*0.001);
 
         gl.bindVertexArray(this.drawInfo.va);
         gl.drawArraysInstanced(gl.TRIANGLES, 0, this.drawInfo.size, this.nrParticles);
