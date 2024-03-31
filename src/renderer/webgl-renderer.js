@@ -143,7 +143,7 @@ class WebGLRenderer extends Renderer {
         this.maxPerceptionRadius = 100.0;
 
         shader.setFloat("v0", 10.0); // Cruise Speed [m/s]
-        shader.setFloat("tau",0.4); // relaxation time [s]
+        shader.setFloat("tau",0.07); // relaxation time [s]
         shader.setFloat("M", 0.08); // Mass [kg]
         shader.setFloat("weightRandomForce", 0.01);
         shader.setFloat("Rmax", 100.0); // max perception range [m]
@@ -158,7 +158,7 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("wa", 0.5);  // weighting factor for alignment force.
         shader.setFloat("wc", 1.0);  // weighting factor for cohesion force.
         shader.setVec2("roostXZ", 0.0, 0.0); // roost position
-        shader.setFloat("roostHeight", 30.0); // roost altitude
+        shader.setFloat("roostHeight", 100.0); // roost altitude
         shader.setFloat("wRoostH", 0.01); // weighting factor horizontal attraction to the roost
         shader.setFloat("wRoostV", 0.2); // weighting factor vertical attraction to the roost
         shader.setFloat("L0", 0.78); // default lift. equals to mg [N]
@@ -173,7 +173,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         // should be power of 2
-        this.nrParticles = 4096.0 * 2.0;
+        this.nrParticles = 2048;
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
@@ -363,7 +363,7 @@ class WebGLRenderer extends Renderer {
             this.updateShader.setTexture(6, this.updateInfoRead.range1);
             this.updateShader.setTexture(7, this.updateInfoRead.range2);
             this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
-            this.updateShader.setFloat("deltaTime", this.timeDelta/1000.0);
+            this.updateShader.setFloat("deltaTime", 0.01);
             this.updateShader.setInt("nrParticle", this.nrParticles);
             this.updateShader.setInt("hashDimension", this.hashDimension);
             this.updateShader.setFloat("gridSize", this.maxPerceptionRadius);

@@ -233,6 +233,7 @@ void main(){
     vec3 socialForce = separationForce + cohesionForce + alignmentForce;
 
     // roost attraction
+    float l = length(position - vec3(roostXZ.x, position.y, roostXZ.y));
     vec3 n = normalize(position - vec3(roostXZ.x, position.y, roostXZ.y));
     float multiplier = mix(-1.0, 1.0, step(0.0, n.x*tangent.z - n.z*tangent.x));
     vec3 roostForceH = wRoostH * (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;

@@ -41,7 +41,7 @@ void main() {
     mat4 model_ = model * rot;
 
     // scale and rotation are given with model matrix
-    vec4 pos = model_ * vec4(aPos*0.5, 1.0);
+    vec4 pos = model_ * vec4(aPos*0.3, 1.0);
 
     // world position are given as instancePosition;
     pos.xyz += instancePosition * 0.01;
