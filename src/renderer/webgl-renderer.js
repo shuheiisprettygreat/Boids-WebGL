@@ -145,8 +145,8 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("M", 0.08); // Mass [kg]
         shader.setFloat("weightRandomForce", 0.01);
         shader.setFloat("Rmax", 100.0); // max perception range [m]
-        shader.setFloat("du", 0.05); // reaction time [s]
-        shader.setFloat("s", 0.05 * 0.1); // interpolation factor
+        shader.setFloat("du", 0.07); // reaction time [s]
+        shader.setFloat("s", 0.07 * 0.1); // interpolation factor
         shader.setFloat("nc", 6.5); // interpolation factor [#agent]
         shader.setFloat("rh", 0.2); // radius of maximum separation [m]
         const Rsep = 4.0; // separation radius [m]
