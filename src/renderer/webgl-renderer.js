@@ -22,6 +22,9 @@ import initializeFsSource from './shaders/initialize/initialize.frag?raw';
 import updateVsSource from './shaders/update/update.vert?raw';
 import updateFsSource from './shaders/update/update.frag?raw';
 
+import maxRangeVsSource from './shaders/maxRange/maxRange.vert?raw';
+import maxRangeFsSource from './shaders/maxRange/maxRange.frag?raw';
+
 import hashingVsSource from './shaders/hashing/hashing.vert?raw';
 import hashingFsSource from './shaders/hashing/hashing.frag?raw';
 
@@ -59,11 +62,17 @@ class WebGLRenderer extends Renderer {
 
         // initializeShaders ----------
         this.initializeShader = new Shader(this.gl, initializeVsSource, initializeFsSource);
+
+        // shader to compute maximum range
+        this.maxRangeShader = new Shader(this.gl, maxRangeVsSource, maxRangeFsSource);
+        this.maxRangeShader.use();
+        this.maxRangeShader.setInt("texRead", 0);
         
         // shader to hash position
         this.hashingShader = new Shader(this.gl, hashingVsSource, hashingFsSource);
         this.hashingShader.use();
         this.hashingShader.setInt("positionTexRead", 0);
+        this.hashingShader.setInt("maxRangeTex", 1);
         
         // shader to sort hashed values
         this.bitonicSortShader = new Shader(this.gl, bitonicSortVsSource, bitonicSortFsSource);
@@ -84,6 +93,7 @@ class WebGLRenderer extends Renderer {
         this.updateShader.setInt("hash2indicesTex", 3);
         this.updateShader.setInt("range1Tex", 4);
         this.updateShader.setInt("range2Tex", 5);
+        this.updateShader.setInt("maxRangeTex", 6);
         this.setupBoidsParams(this.updateShader);
 
         // copy data from data-texture to buffers. 
@@ -194,9 +204,17 @@ class WebGLRenderer extends Renderer {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         [this.updateInfoRead, this.updateInfoWrite] = [this.updateInfoWrite, this.updateInfoRead];
         
-        // Setup max range calcurate 
-
+        
         // setup datas for spatial hashing and bitonic sort
+
+        // Setup max range calcurate (used for adaptive size grid sorting)
+        const maxRangeTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const maxRangeTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
+        const maxFb1 = this.createFramebuffer_mrt(gl, [maxRangeTexture1]);
+        const maxFb2 = this.createFramebuffer_mrt(gl, [maxRangeTexture2]);
+        this.maxRangeInfoRead = {fb:maxFb1, tex:maxRangeTexture1};
+        this.maxRangeInfoWrite = {fb:maxFb2, tex:maxRangeTexture2};
+
         // setup hashing info
         // hashDimension^2 is size of hashTable.
         // resonable limit is < 4096, because of device specific limiatation, which is ample.
@@ -275,14 +293,35 @@ class WebGLRenderer extends Renderer {
 
         let gl = this.gl;
 
+        // compute maximum range ==========================
+        const nrIter = Math.log2(this.nrParticles);
+        this.maxRangeShader.use();
+        this.maxRangeShader.setInt("nrParticles", this.nrParticles);
+        this.maxRangeShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
+        gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
+        for(let i=0; i<nrIter; i++){
+            if(i==0){
+                this.maxRangeShader.setTexture(0, this.updateInfoRead.range2);
+            } else {
+                this.maxRangeShader.setTexture(0, this.maxRangeInfoRead.tex);
+            }
+            this.maxRangeShader.setInt("stride", Math.pow(2, i));
+            gl.bindFramebuffer(gl.FRAMEBUFFER, this.maxRangeInfoWrite.fb);
+            this.renderQuad();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            [this.maxRangeInfoRead, this.maxRangeInfoWrite] = [this.maxRangeInfoWrite, this.maxRangeInfoRead]
+        }
+
         // compute hash of each particle. ==================================
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.sortInfoWrite.fb);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.use();
             this.hashingShader.setTexture(0, this.updateInfoRead.position);
+            this.hashingShader.setTexture(1, this.maxRangeInfoRead.tex);
             this.hashingShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.hashingShader.setFloat("gridSize", this.maxPerceptionRadius);
             this.hashingShader.setInt("hashSize", this.hashDimension * this.hashDimension);
+            this.hashingShader.setFloat("Rmax", 100.0);
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -335,6 +374,7 @@ class WebGLRenderer extends Renderer {
             this.updateShader.setTexture(3, this.hash2indicesInfo.tex);
             this.updateShader.setTexture(4, this.updateInfoRead.range1);
             this.updateShader.setTexture(5, this.updateInfoRead.range2);
+            this.updateShader.setTexture(6, this.maxRangeInfoRead.tex);
             this.updateShader.setIVec2("texDimensions", this.dataTextureWidth, this.dataTextureHeight);
             this.updateShader.setFloat("deltaTime", 0.01);
             this.updateShader.setFloat("time", this.timestamp);

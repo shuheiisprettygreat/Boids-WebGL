@@ -2,15 +2,23 @@
 precision mediump float;
 
 uniform sampler2D positionTexRead;
+uniform sampler2D maxRangeTex;
 uniform ivec2 texDimensions;
 uniform float gridSize;
 uniform int hashSize;
+
+uniform float Rmax;
 
 layout(location=0) out vec4 FragColor;
 
 #define P1 842167
 #define P2 881477
 #define P3 742219
+
+float getGridSize(){
+    vec4 c = texelFetch(maxRangeTex, ivec2(0,0), 0);
+    return min(Rmax, max(max(c.x, c.y), max(c.z, c.w)));
+}
 
 ivec3 grid2positiveGrid(ivec3 grid){
     grid.x = grid.x<0 ? -grid.x*2 : grid.x*2+1;
@@ -20,7 +28,7 @@ ivec3 grid2positiveGrid(ivec3 grid){
 }
 
 ivec3 pos2grid(vec3 v){
-    return ivec3(floor(v / gridSize));
+    return ivec3(floor(v / getGridSize()));
 }
 
 ivec3 pos2positiveGrid(vec3 v){
