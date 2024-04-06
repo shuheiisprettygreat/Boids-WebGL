@@ -238,13 +238,13 @@ void main(){
 
     // roost attraction
     float l = length(position - vec3(roostXZ.x, roostHeight, roostXZ.y));
-    vec3 n = normalize(position - vec3(roostXZ.x, roostHeight, roostXZ.y));
+    vec3 n = normalize(position - vec3(roostXZ.x, position.y, roostXZ.y));
     float multiplier = mix(-1.0, 1.0, step(0.0, n.x*tangent.z - n.z*tangent.x));
     // vec3 roostForceH = (wRoostH + l*0.0003)* (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
     vec3 roostForceH = wRoostH * (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
     vec3 roostForceV = wRoostV * (roostHeight - position.y) * vec3(0.0, 1.0, 0.0);
 
-    roostForceV *= position.y < roostHeight ? 1.0 : (position.y> roostHeight*1.5) ? 1.0 : 0.0;
+    // roostForceV *= position.y < roostHeight ? 1.0 : (position.y> roostHeight*1.5) ? 1.0 : 0.0;
 
     vec3 steeringForce = socialForce + roostForceH + roostForceV;
     steeringForce += computeCruiseForce(velocity);

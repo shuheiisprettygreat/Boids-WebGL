@@ -145,7 +145,7 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("M", 0.08); // Mass [kg]
         shader.setFloat("weightRandomForce", 0.01);
         shader.setFloat("Rmax", 100.0); // max perception range [m]
-        const du = 0.07; // reaction time [s]
+        const du = 0.05; // reaction time [s]
         shader.setFloat("s", du * 0.1); // interpolation factor
         shader.setFloat("nc", 6.5); // interpolation factor [#agent]
         shader.setFloat("rh", 0.2); // radius of maximum separation [m]
@@ -158,7 +158,7 @@ class WebGLRenderer extends Renderer {
         shader.setVec2("roostXZ", 0.0, 0.0); // roost position
         shader.setFloat("roostHeight", 100.0); // roost altitude
         shader.setFloat("wRoostH", 0.01); // weighting factor horizontal attraction to the roost
-        shader.setFloat("wRoostV", 0.2); // weighting factor vertical attraction to the roost
+        shader.setFloat("wRoostV", 0.1); // weighting factor vertical attraction to the roost
         shader.setFloat("L0", 0.78); // default lift. equals to mg [N]
         shader.setFloat("T0", 0.24) // Default thrust [N]
         const LDRatio = 3.3; // Lift drag coefficient.
