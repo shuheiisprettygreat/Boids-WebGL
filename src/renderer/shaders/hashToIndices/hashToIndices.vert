@@ -6,7 +6,6 @@ uniform int texDimensionsX;
 uniform int nrParticles;
 uniform int hashDimension;
 
-out float iTarget;
 out vec2 iIndices;
 
 vec4 sampleTex(int i){
@@ -15,7 +14,6 @@ vec4 sampleTex(int i){
 }
 
 void main() {
-    
     vec2 hashAndIndecis = sampleTex(gl_VertexID).xy;
     float hash_prev = sampleTex(gl_VertexID !=0 ? gl_VertexID-1 : nrParticles-1).y;
     float hash_next = sampleTex(gl_VertexID != nrParticles-1 ? gl_VertexID+1 : 0).y;
@@ -32,16 +30,7 @@ void main() {
     gl_Position = vec4(pos/float(hashDimension), 0.0, 1.0);
     gl_PointSize = 1.0;
 
-    iIndices = vec2(0, 0);
-    iTarget = -1.0;
-    
-    if(hashChangeNext){
-        iIndices.y = float(gl_VertexID+1);
-        iTarget = 1.0;
-    }
-    if (hashChangedHere){
-        iIndices.x = float(gl_VertexID);
-        iTarget = 0.0;
-    }
-
+    iIndices = vec2(0.0, 0.0);
+    iIndices.x += hashChangedHere ? intBitsToFloat(gl_VertexID) : intBitsToFloat(0);
+    iIndices.y += hashChangeNext ? intBitsToFloat(gl_VertexID+1) : intBitsToFloat(0);
 }

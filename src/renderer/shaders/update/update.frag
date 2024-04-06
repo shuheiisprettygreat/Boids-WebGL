@@ -4,8 +4,7 @@ precision mediump float;
 uniform sampler2D positionTexRead;
 uniform sampler2D velocityTexRead;
 uniform sampler2D sortedHashedIdTex;
-uniform sampler2D hash2indicesBeginTex;
-uniform sampler2D hash2indicesEndTex;
+uniform sampler2D hash2indicesTex;
 uniform sampler2D range1Tex;
 uniform sampler2D range2Tex;
 
@@ -183,21 +182,11 @@ void main(){
         ivec3 neighborGrid = grid2positiveGrid(grid + ivec3(dx, dy, dz));
         int neighborHash = grid2hash(neighborGrid);
 
-        ivec2 indexRangeBegin = ivec2(
-            sampleAs1D(hash2indicesBeginTex, ivec2(hashDimension, hashDimension), neighborHash).xy
-        );
-        ivec2 indexRangeEnd = ivec2(
-            sampleAs1D(hash2indicesEndTex, ivec2(hashDimension, hashDimension), neighborHash).xy
-        );
+        vec4 indexRange = sampleAs1D(hash2indicesTex, ivec2(hashDimension, hashDimension), neighborHash);
+        int indexBegin = int(packHalf2x16(indexRange.xy));
+        int indexEnd= int(packHalf2x16(indexRange.zw));
 
-        ivec2 indexRange;
-        if(indexRangeBegin.y != 0){
-            indexRange = indexRangeBegin;
-        } else {
-            indexRange = ivec2(indexRangeBegin.x, indexRangeEnd.y);
-        }
-
-        for(int i=indexRange.x; i<indexRange.y; i++){
+        for(int i=indexBegin; i<indexEnd; i++){
             int otherId = int(sampleAs1D(sortedHashedIdTex, texDimensions, i).x);
             if(thisId == otherId) continue;
             vec3 posOther = sampleAs1D(positionTexRead, texDimensions, otherId).xyz;
