@@ -148,13 +148,13 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("v0", 10.0); // Cruise Speed [m/s]
         shader.setFloat("tau",1.0); // relaxation time [s]
         shader.setFloat("M", 0.08); // Mass [kg]
-        shader.setFloat("weightRandomForce", 0.01);
+        shader.setFloat("weightRandomForce", 0.01*100.0);
         shader.setFloat("Rmax", 100.0); // max perception range [m]
         const du = 0.05; // reaction time [s]
         shader.setFloat("s", du * 0.1); // interpolation factor
         shader.setFloat("nc", 6.5); // interpolation factor [#agent]
         shader.setFloat("rh", 0.2); // radius of maximum separation [m]
-        const Rsep = 0.2; // separation radius [m]
+        const Rsep = 2.5; // separation radius [m]
         // paramater of normal distribution. take 0.01 on Rsep.
         shader.setFloat("gammaSq", -Rsep*Rsep/Math.log(0.01));
         shader.setFloat("ws", 1.0);  // weighting factor for separation force.
@@ -163,7 +163,7 @@ class WebGLRenderer extends Renderer {
         shader.setVec2("roostXZ", 0.0, 0.0); // roost position
         shader.setFloat("roostHeight", 100.0); // roost altitude
         shader.setFloat("wRoostH", 0.01); // weighting factor horizontal attraction to the roost
-        shader.setFloat("wRoostV", 0.1); // weighting factor vertical attraction to the roost
+        shader.setFloat("wRoostV", 0.05); // weighting factor vertical attraction to the roost
         shader.setFloat("L0", 0.78); // default lift. equals to mg [N]
         shader.setFloat("T0", 0.24) // Default thrust [N]
         const LDRatio = 3.3; // Lift drag coefficient.
@@ -254,6 +254,10 @@ class WebGLRenderer extends Renderer {
         gl.bindVertexArray(null);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         this.drawInfo = {va:drawVa, size:this.parser.sizeList[0]};
+
+        for(let i=80; i>=0; i--){
+            this.beforeFrame();
+        }
 
     }
 

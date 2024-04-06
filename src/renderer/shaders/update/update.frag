@@ -129,11 +129,11 @@ vec3 randomInsideSphere(uvec3 seed){
     return vec3(r*sp*cos(t), r*sp*sin(t), r*cos(p));
 }
 
-vec3 computeCruiseForce(vec3 velocity){
+vec3 computeCruiseForce(vec3 velocity, float t){
     float l = length(velocity);
     vec3 tangent = velocity / l;
 
-    vec3 result = tangent * (M*(v0-l)/tau);
+    vec3 result = tangent * (M*(v0-l)/t);
     return result;
 }
 
@@ -150,6 +150,10 @@ float getSeparationGaussian(vec3 d){
 vec3 rotateAroundAxis(vec3 axis, vec3 v, float angle){
     float ca = cos(angle);
     return ca*v + (1.0-ca)*dot(v,axis)*axis + sin(angle)*cross(axis, v);
+}
+
+float rationalBump( float x, float k ){
+    return 1.0/(1.0+k*x*x);
 }
 
 void main(){
@@ -235,17 +239,21 @@ void main(){
     vec3 socialForce = separationForce + cohesionForce + alignmentForce;
 
     // roost attraction
-    // float l = length(position - vec3(roostXZ.x, roostHeight, roostXZ.y));
     vec3 n = normalize(position - vec3(roostXZ.x, position.y, roostXZ.y));
     float multiplier = mix(-1.0, 1.0, step(0.0, n.x*tangent.z - n.z*tangent.x));
-    // vec3 roostForceH = (wRoostH + l*0.0003)* (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
     vec3 roostForceH = wRoostH * (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
     vec3 roostForceV = wRoostV * (roostHeight - position.y) * vec3(0.0, 1.0, 0.0);
 
-    // roostForceV *= position.y < roostHeight ? 1.0 : (position.y> roostHeight*1.5) ? 1.0 : 0.0;
+    // float rb = rationalBump(position.y - roostHeight, 0.001);
+    // roostForceV *= 1.0 - rb;
+    // float relaxation = mix(1.0, 100.0, abs(position.y - roostHeight));
+    // float pitch = tangent.y;
+    // pitch = sqrt(1.0-pitch*pitch + 0.0001);
+    // float relaxation = mix(0.1, 10.0, pitch);
+    float relaxation = tau;
 
     vec3 steeringForce = socialForce + roostForceH + roostForceV;
-    steeringForce += computeCruiseForce(velocity);
+    steeringForce += computeCruiseForce(velocity, relaxation);
     steeringForce += computeRandomForce(position);
     // steeringForce = -bitangent*0.2;
 
