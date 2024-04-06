@@ -133,7 +133,7 @@ class WebGLRenderer extends Renderer {
     setupBoidsParams(shader){
         shader.use();
 
-        this.maxPerceptionRadius = 10.0;
+        this.maxPerceptionRadius = 100.0;
 
         shader.setFloat("v0", 10.0); // Cruise Speed [m/s]
         shader.setFloat("tau",1.0); // relaxation time [s]
