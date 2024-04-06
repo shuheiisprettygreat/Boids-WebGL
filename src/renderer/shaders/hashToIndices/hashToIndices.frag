@@ -1,7 +1,7 @@
 #version 300 es
 precision mediump float;
 
-in vec2 iIndices;
+flat in ivec2 iIndices;
 
 out vec4 FragColor;
 
@@ -9,7 +9,7 @@ void main(){
 
     uint u1 = uint(iIndices.x);
     uint u2 = uint(iIndices.y);
-
+    
     vec2 f1v = unpackHalf2x16(u1);
     vec2 f2v = unpackHalf2x16(u2);
 

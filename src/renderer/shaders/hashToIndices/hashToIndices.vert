@@ -6,7 +6,7 @@ uniform ivec2 texDimensions;
 uniform int nrParticles;
 uniform int hashDimension;
 
-out vec2 iIndices;
+flat out ivec2 iIndices;
 
 vec4 sampleTex(int i){
     ivec2 texCoords = ivec2(i%texDimensions.x, i/texDimensions.x);
@@ -30,8 +30,7 @@ void main() {
     gl_Position = vec4(pos/float(hashDimension), 0.0, 1.0);
     gl_PointSize = 1.0;
 
-    // cast to float
-    iIndices = vec2(0.0, 0.0);
-    iIndices.x += b1 ? float(gl_VertexID) : 0.0;
-    iIndices.y += b2 ? float(gl_VertexID+1) : 0.0;
+    iIndices = ivec2(0,0);
+    iIndices.x += b1 ? gl_VertexID : 0;
+    iIndices.y += b2 ? gl_VertexID+1 : 0;
 }

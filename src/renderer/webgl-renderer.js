@@ -194,13 +194,13 @@ class WebGLRenderer extends Renderer {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         [this.updateInfoRead, this.updateInfoWrite] = [this.updateInfoWrite, this.updateInfoRead];
         
+        // Setup max range calcurate 
 
         // setup datas for spatial hashing and bitonic sort
         // setup hashing info
         // hashDimension^2 is size of hashTable.
         // resonable limit is < 4096, because of device specific limiatation, which is ample.
         this.hashDimension = 2048;
-
         const sortTexture1 = createTexture(gl, null,  2, gl.RG32F, gl.RG, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const sortTexture2 = createTexture(gl, null,  2, gl.RG32F, gl.RG, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const fbSort1 = createFramebuffer(gl, sortTexture1);
