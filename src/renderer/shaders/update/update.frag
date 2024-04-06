@@ -166,7 +166,7 @@ void main(){
      
     // topological interaction
     // NOTE : range2.x is range updated on 5 frame before.
-    float neighborRange = range2.z; 
+    float neighborRange = range2.y; 
     int neighborCount = 0;
     int neighborVisibleCount = 0;
     int centralityNeighborCount = 0;
@@ -226,7 +226,7 @@ void main(){
     vec3 socialForce = separationForce + cohesionForce + alignmentForce;
 
     // roost attraction
-    float l = length(position - vec3(roostXZ.x, roostHeight, roostXZ.y));
+    // float l = length(position - vec3(roostXZ.x, roostHeight, roostXZ.y));
     vec3 n = normalize(position - vec3(roostXZ.x, position.y, roostXZ.y));
     float multiplier = mix(-1.0, 1.0, step(0.0, n.x*tangent.z - n.z*tangent.x));
     // vec3 roostForceH = (wRoostH + l*0.0003)* (0.5 + 0.5*dot(n, tangent)) * bitangent * multiplier;
@@ -266,8 +266,23 @@ void main(){
     range2 = vec4(range1.w, range2.xyz);
     range1 = vec4(newNeighborRange, range1.xyz);
 
+
+    // Check if hash-to-indices works ok
+    // int neighborCountActual = 0;
+    // for(int i=0; i<nrParticle; i++){
+    //     int otherId = int(sampleAs1D(sortedHashedIdTex, texDimensions, i).x);
+    //     if(thisId == otherId) continue;
+
+    //     vec3 posOther = sampleAs1D(positionTexRead, texDimensions, otherId).xyz;
+    //     float dMag = length(posOther - position);
+
+    //     // this indivisual is inside perception range!
+    //     float insideRange = 1.0 - step(neighborRange, dMag);
+    //     neighborCountActual += int(insideRange);
+    // }
+
     // debug can be done with range texture's latter entries.
-    // range2.yzw = vec3(tanRollIn, tanRollOut, dot(normalize(steeringForce), bitangent));
+    // range2.w = float(neighborCount != neighborCountActual);
 
     velocity += force/M * deltaTime;
     position += velocity * deltaTime;
