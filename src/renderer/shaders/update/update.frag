@@ -65,7 +65,7 @@ layout(location=3) out vec4 rangeColor2;
 
 float getGridSize(){
     vec4 c = texelFetch(maxRangeTex, ivec2(0,0), 0);
-    return min(Rmax, max(max(c.x, c.y), max(c.z, c.w)));
+    return min(Rmax, max(max(c.x, c.y), c.z));
 }
 
 ivec3 grid2positiveGrid(ivec3 grid){
@@ -180,6 +180,8 @@ void main(){
     vec3 centralityVectorSum = vec3(0.0);
     vec3 alignmentVectorSum = vec3(0.0);
 
+    int neighborLimit = int(nc*3.0);
+
     // Compute neighborhood.
     ivec3 grid = pos2grid(position);
     for(int dx=-1; dx<2; dx++){ for(int dy=-1; dy<2; dy++){ for(int dz=-1; dz<2; dz++){
@@ -216,8 +218,11 @@ void main(){
             centralityVectorSum += nd*centralityCheck;
 
             alignmentVectorSum += visibleInsideRange * (normalize(velOther) - tangent);
+
+            if(neighborCount > neighborLimit) break;
         }
-    }}}
+        if(neighborCount > neighborLimit) break;
+    } if(neighborCount > neighborLimit) break;} if(neighborCount > neighborLimit) break;} 
 
     // compute social forces
     vec3 separationForce = neighborCount== 0 ? vec3(0.0) : -ws/float(neighborCount)*separationVectorSum;
@@ -285,8 +290,8 @@ void main(){
     //     neighborCountActual += int(insideRange);
     // }
 
-    // debug can be done with range texture's latter entries.
-    // range2.w = float(neighborCount != neighborCountActual);
+    // // debug can be done with range texture's latter entries.
+    // range2.w = float(neighborCountActual- neighborCount);
 
     velocity += force/M * deltaTime;
     position += velocity * deltaTime;

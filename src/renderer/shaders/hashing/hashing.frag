@@ -17,7 +17,7 @@ layout(location=0) out vec4 FragColor;
 
 float getGridSize(){
     vec4 c = texelFetch(maxRangeTex, ivec2(0,0), 0);
-    return min(Rmax, max(max(c.x, c.y), max(c.z, c.w)));
+    return min(Rmax, max(max(c.x, c.y), c.z));
 }
 
 ivec3 grid2positiveGrid(ivec3 grid){
