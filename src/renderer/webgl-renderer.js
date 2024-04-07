@@ -154,16 +154,16 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("s", du * 0.1); // interpolation factor
         shader.setFloat("nc", 6.5); // interpolation factor [#agent]
         shader.setFloat("rh", 0.2); // radius of maximum separation [m]
-        const Rsep = 2.5; // separation radius [m]
+        const Rsep = 4.0; // separation radius [m]
         // paramater of normal distribution. take 0.01 on Rsep.
         shader.setFloat("gammaSq", -Rsep*Rsep/Math.log(0.01));
-        shader.setFloat("ws", 1.0);  // weighting factor for separation force.
+        shader.setFloat("ws", 0.7);  // weighting factor for separation force.
         shader.setFloat("wa", 0.5);  // weighting factor for alignment force.
         shader.setFloat("wc", 1.0);  // weighting factor for cohesion force.
         shader.setVec2("roostXZ", 0.0, 0.0); // roost position
         shader.setFloat("roostHeight", 100.0); // roost altitude
-        shader.setFloat("wRoostH", 0.01); // weighting factor horizontal attraction to the roost
-        shader.setFloat("wRoostV", 0.05); // weighting factor vertical attraction to the roost
+        shader.setFloat("wRoostH", 0.02); // weighting factor horizontal attraction to the roost
+        shader.setFloat("wRoostV", 0.08); // weighting factor vertical attraction to the roost
         shader.setFloat("L0", 0.78); // default lift. equals to mg [N]
         shader.setFloat("T0", 0.24) // Default thrust [N]
         const LDRatio = 3.3; // Lift drag coefficient.

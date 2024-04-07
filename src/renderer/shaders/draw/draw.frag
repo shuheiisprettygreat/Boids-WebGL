@@ -13,20 +13,22 @@ out vec4 FragColor;
 
 void main() {
 
-    vec3 L = normalize(vec3(2,1,1));
+    FragColor = vec4(0,0,0,1);
 
-    float diff = dot(iNormal, L);
-    diff = clamp(diff, 0.0, 1.0);
-    diff = diff*0.5 + 0.5;
-    diff = diff*diff;
-    vec3 diffuse = mix(vec3(0.5, 0.5, 0.5), vec3(0.92,0.9,1.0),diff);
+    // vec3 L = normalize(vec3(2,1,1));
 
-    vec3 V = normalize(camera - iPos);
-    vec3 H = normalize(normalize(light-iPos) + V);
-    float spec = clamp(dot(iNormal, H), 0.0, 1.0);
-    spec = pow(spec, 64.0);
-    vec3 specular = vec3(spec);
+    // float diff = dot(iNormal, L);
+    // diff = clamp(diff, 0.0, 1.0);
+    // diff = diff*0.5 + 0.5;
+    // diff = diff*diff;
+    // vec3 diffuse = mix(vec3(0.5, 0.5, 0.5), vec3(0.92,0.9,1.0),diff);
 
-    vec3 col = vec3(0.8);
-    FragColor = vec4(col*diffuse + specular, 1.0);
+    // vec3 V = normalize(camera - iPos);
+    // vec3 H = normalize(normalize(light-iPos) + V);
+    // float spec = clamp(dot(iNormal, H), 0.0, 1.0);
+    // spec = pow(spec, 64.0);
+    // vec3 specular = vec3(spec);
+
+    // vec3 col = vec3(0.8);
+    // FragColor = vec4(col*diffuse + specular, 1.0);
 }

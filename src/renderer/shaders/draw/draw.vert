@@ -52,10 +52,10 @@ void main() {
     mat4 model_ = model * yawPitchRot;
 
     // scale and rotation are given with model matrix
-    vec4 pos = model_ * vec4(rotateZ(aPos, roll)*0.3, 1.0);
+    vec4 pos = model_ * vec4(rotateZ(aPos, roll)*0.4, 1.0);
 
     // world position are given as instancePosition;
-    pos.xyz += instancePositionAndBanking.xyz * 0.01;
+    pos.xyz += instancePositionAndBanking.xyz * 0.075;
     // vec3 testPosition = rotateAroundAxis(normalize(vec3(1, 0, 1)), instancePositionAndBanking.xyz, t);
     // pos.xyz += testPosition * 0.01;
 
