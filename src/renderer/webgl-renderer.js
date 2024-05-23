@@ -114,7 +114,7 @@ class WebGLRenderer extends Renderer {
         
         // setup camera
         this.camera = new Camera(5, 3, 7, 0, 1, 0, 0, 0, 45);
-        this.camera.lookAt(0, 0, 0);
+        this.camera.lookAt(0, 5, 0);
         
         this.parser = new Json2Va(this.gl);
 
@@ -161,8 +161,8 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("wa", 0.5);  // weighting factor for alignment force.
         shader.setFloat("wc", 1.0);  // weighting factor for cohesion force.
         shader.setVec2("roostXZ", 0.0, 0.0); // roost position
-        shader.setFloat("roostHeight", 100.0); // roost altitude
-        shader.setFloat("wRoostH", 0.02); // weighting factor horizontal attraction to the roost
+        shader.setFloat("roostHeight", 60.0); // roost altitude
+        shader.setFloat("wRoostH", 0.019); // weighting factor horizontal attraction to the roost
         shader.setFloat("wRoostV", 0.08); // weighting factor vertical attraction to the roost
         shader.setFloat("L0", 0.78); // default lift. equals to mg [N]
         shader.setFloat("T0", 0.24) // Default thrust [N]

@@ -184,7 +184,8 @@ void main(){
     vec3 centralityVectorSum = vec3(0.0);
     vec3 alignmentVectorSum = vec3(0.0);
 
-    int neighborLimit = int(nc*3.0);
+    // int neighborLimit = int(nc*3.0);
+    int neighborLimit = nrParticle;
 
     // Compute neighborhood.
     ivec3 grid = pos2grid(position);

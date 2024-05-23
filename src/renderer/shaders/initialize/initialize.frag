@@ -51,7 +51,7 @@ vec3 randomInsideSphere(){
 }
 
 void main(){
-    vec3 position = randomInsideCylinder(150.0, 20.0) + vec3(0.0, 90, 0.0);
+    vec3 position = randomInsideCylinder(150.0, 10.0) + vec3(0.0, 45, 0.0);
     vec3 heading = randomInsideSphere();
     vec3 velocity = heading * 10.0;
     float bankingAngle = 0.0;
