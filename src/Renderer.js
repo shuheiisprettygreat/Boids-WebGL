@@ -22,26 +22,35 @@ class Renderer {
             event.preventDefault();
         };
         
+        const fps = 50;
+        let interval = 1000/fps;
+        let prevTime = performance.now() - interval;
 
-        let lastTimeStamp = 0;
-        if(!this.timeDeltaMin) this.timeDeltaMin = 0.0;
+        this.timestamp = 0;
+        this.timeDelta = interval;
 
-        this.frameCallback = (timestamp) => {
-            this.timestamp = timestamp;
-            this.timeDelta = timestamp - lastTimeStamp;
+        this.frameCallback = () => {
+            let currentTime = performance.now();
+            let updated = false;
 
-            
-            if(this.timeDelta > this.timeDeltaMin){                
-                this.frameCount++;
-                if(Math.random() < 0.02) console.log(this.timeDelta);
-
-                let elapsed = Date.now();
-                this.beforeFrame(timestamp, this.timeDelta);
-                this.OnFrame(timestamp, this.timeDelta);
-                elapsed = Date.now() - elapsed;
-
-                lastTimeStamp = timestamp - (this.timeDelta % this.timeDeltaMin) - elapsed;
+            while(currentTime - prevTime > interval * 0.5){
+                this.beforeFrame(currentTime, 0);
+                updated = true;
+                prevTime += interval;
+                const now = performance.now();
+                const updateTime = now - currentTime;
+                if(updateTime > interval * 0.5){
+                    if(prevTime < now - interval){
+                        prevTime = now - interval;
+                    }
+                }
+                break;
             }
+
+            if(updated){
+                this.OnFrame();
+            }
+
             this.refId = requestAnimationFrame(this.frameCallback);
         };
     
@@ -94,7 +103,6 @@ class Renderer {
         window.addEventListener('mousemove', this.mouseMoveCallback);
         window.addEventListener('wheel', this.mouseWheelCallback);
         this.resizeCallback();
-        this.timeDeltaMin = 10.0;
         this.refId = requestAnimationFrame(this.frameCallback);
     }
 

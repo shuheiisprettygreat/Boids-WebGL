@@ -55,7 +55,8 @@ void main() {
     vec4 pos = model_ * vec4(rotateZ(aPos, roll)*0.4, 1.0);
 
     // world position are given as instancePosition;
-    pos.xyz += instancePositionAndBanking.xyz * 0.075;
+    // pos.xyz += instancePositionAndBanking.xyz * 0.075;
+    pos.xyz += instancePositionAndBanking.xyz * 0.02;
     // vec3 testPosition = rotateAroundAxis(normalize(vec3(1, 0, 1)), instancePositionAndBanking.xyz, t);
     // pos.xyz += testPosition * 0.01;
 

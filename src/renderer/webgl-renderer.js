@@ -113,8 +113,8 @@ class WebGLRenderer extends Renderer {
         });
         
         // setup camera
-        this.camera = new Camera(5, 3, 7, 0, 1, 0, 0, 0, 45);
-        this.camera.lookAt(0, 5, 0);
+        this.camera = new Camera(5, 7, 7, 0, 1, 0, 0, 0, 45);
+        this.camera.lookAt(0, 0, 0);
         
         this.parser = new Json2Va(this.gl);
 
@@ -177,8 +177,11 @@ class WebGLRenderer extends Renderer {
     init(){
         let gl = this.gl;
 
+        this.timestamp = 0;
+        this.timedelta = 0.01;
+
         // should be power of 2
-        this.nrParticles = 2048*4.0;
+        this.nrParticles = 2048*2.0;
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
@@ -296,6 +299,8 @@ class WebGLRenderer extends Renderer {
     beforeFrame(){
 
         let gl = this.gl;
+
+        this.timestamp += this.timedelta;
 
         // compute maximum range ==========================
         const nrIter = Math.log2(this.nrParticles);
@@ -419,7 +424,7 @@ class WebGLRenderer extends Renderer {
 
     //---------------------------------------
     // Main loop function.
-    OnFrame(timestamp, timeDelta){
+    OnFrame(){
 
         super.OnFrame();
         let gl = this.gl;
