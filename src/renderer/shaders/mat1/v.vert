@@ -15,5 +15,5 @@ out vec2 iTex;
 void main() {
     gl_Position = proj * view * model * vec4(aPos, 1.0);
     iNormal = aNormal;
-    iTex = (model*0.5*vec4(aTex,0, 0)).xy;
+    iTex = aTex;
 }

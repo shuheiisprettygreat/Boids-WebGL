@@ -4,16 +4,24 @@ precision mediump float;
 in vec3 iPos;
 in vec3 iNormal;
 in vec2 iTex;
+in vec3 iVel;
 
 uniform vec3 camera;
 
 out vec4 FragColor;
 
 #define light vec3(20,10,10)
+#define TAU 6.283185
 
 void main() {
 
-    FragColor = vec4(1,1,1,1);
+    vec3 rgb = vec3(0.0,0.0,0.0);
+    // vec3 rgb = vec3(0.8,0.8,0.8);
+
+    // float pitch = asin(iVel.y);
+    // rgb = pitch > TAU * 0.125 ? vec3(0) : rgb;
+
+    FragColor = vec4(rgb,1);
 
     // vec3 L = normalize(vec3(2,1,1));
 

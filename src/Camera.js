@@ -84,6 +84,7 @@ class Camera{
 
     processZoom(amt){
         this.fov += amt * this.zoomSensitivity;
+        console.log(this.fov);
     }
 }
 

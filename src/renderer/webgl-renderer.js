@@ -58,6 +58,8 @@ class WebGLRenderer extends Renderer {
         // setup shaders ---------
         this.shader = new Shader(this.gl, vsSource, fsSource);
         this.skyShader = new Shader(this.gl, skyVsSource, skyFsSource);
+        this.skyShader.use();
+        this.skyShader.setInt("gradationTex", 0);
         this.quadShader = new Shader(this.gl, quadVsSource, quadFsSource);
 
         // initializeShaders ----------
@@ -109,12 +111,16 @@ class WebGLRenderer extends Renderer {
         this.vao = initVAO(this.gl);
         this.texture = initTexture(this.gl, {
             checker_gray : "src\\images\\checker2k.png",
-            checker_colored : "src\\images\\checker2kC.png"
+            checker_colored : "src\\images\\checker2kC.png",
+            gradation : "src\\images\\gradation.png",
+            gradationGround : "src\\images\\ground.png",
         });
         
         // setup camera
-        this.camera = new Camera(5, 7, 7, 0, 1, 0, 0, 0, 45);
-        this.camera.lookAt(0, 0, 0);
+        this.camera = new Camera(0,0.4,0, 0, 1, 0, 0, 0, 65);
+        this.camera.lookAt(1, 1, 0);
+        // this.camera = new Camera(5, 5, 7, 0, 1, 0, 0, 0, 45);
+        // this.camera.lookAt(0.0, 0.0, 0.0);
         
         this.parser = new Json2Va(this.gl);
 
@@ -243,6 +249,12 @@ class WebGLRenderer extends Renderer {
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null);
         this.copyInfo = {tf:tf};
 
+        // setup reflection
+        const reflectionRenderRatio = 10.0;
+        const reflectionTex = createTexture(gl, null, 3, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, this.width*reflectionRenderRatio, this.height*reflectionRenderRatio);
+        const reflectionFb = this.createFramebuffer_mrt(gl, [reflectionTex]);
+        this.reflectionInfo = {fb:reflectionFb, tex:reflectionTex, w:this.width*reflectionRenderRatio, h:this.height*reflectionRenderRatio};
+
         // setup datas to draw.
         const drawVa = this.parser.vaList[0];
         gl.bindVertexArray(drawVa);
@@ -258,10 +270,9 @@ class WebGLRenderer extends Renderer {
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         this.drawInfo = {va:drawVa, size:this.parser.sizeList[0]};
 
-        for(let i=80; i>=0; i--){
-            this.beforeFrame();
-        }
-
+        // for(let i=80; i>=0; i--){
+        //     this.beforeFrame();
+        // }
     }
 
     // helper functions-----------------------------
@@ -455,37 +466,48 @@ class WebGLRenderer extends Renderer {
         );
         this.skyShader.setMat4("view", viewTrans);
 
-        // render scene
-        gl.viewport(0, 0, this.width, this.height);
-        gl.depthMask(true);
-        this.drawScene(this.shader);
-
-        // render instanced particles
-        gl.viewport(0, 0,this.width, this.height);
-        gl.depthMask(true);
-        this.drawParticles();
-
         //render background
         gl.viewport(0, 0, this.width, this.height);
         gl.depthMask(false);
         this.skyShader.use();
+        this.skyShader.setTexture(0, this.texture.gradation);
         this.renderCube();
+
+        
+        // render instanced particles
+        gl.viewport(0, 0,this.width, this.height);
+        gl.depthMask(true);
+        this.drawParticles();
+        
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.reflectionInfo.fb);
+        gl.clearColor(1.0,1.0,1.0, 1.0);
+        gl.clearDepth(1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        gl.viewport(0, 0, this.reflectionInfo.w, this.reflectionInfo.h);
+        this.drawParticlesReflected();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        
+        // render scene
+        gl.viewport(0, 0, this.width, this.height);
+        gl.depthMask(true);
+        this.drawScene(this.shader);
+        
 
         // render debug quads
         let debug_w = this.width * 0.1;
         gl.viewport(0, 0 ,debug_w, debug_w);
         gl.depthFunc(gl.ALWAYS);
         this.quadShader.use();
-        this.quadShader.setTexture(0, this.updateInfoRead.position);
+        this.quadShader.setTexture(0, this.reflectionInfo.tex);
         this.renderQuad();
 
-        gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
-        this.quadShader.setTexture(0, this.sortInfoRead.tex);
-        this.renderQuad();
+        // gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
+        // this.quadShader.setTexture(0, this.sortInfoRead.tex);
+        // this.renderQuad();
 
-        gl.viewport(debug_w*2.4, 0 ,debug_w, debug_w);
-        this.quadShader.setTexture(0, this.hash2indicesInfo.texBegin);
-        this.renderQuad();
+        // gl.viewport(debug_w*2.4, 0 ,debug_w, debug_w);
+        // this.quadShader.setTexture(0, this.hash2indicesInfo.texBegin);
+        // this.renderQuad();
 
     }
 
@@ -499,7 +521,34 @@ class WebGLRenderer extends Renderer {
         this.drawShader.use();
         this.drawShader.setMat4("model", model);
         this.drawShader.setVec3("camera", this.camera.pos[0], this.camera.pos[1], this.camera.pos[2]);
-        this.drawShader.setFloat("t", this.timestamp*0.001);
+        this.drawShader.setInt("vertexReflection", 0);
+
+        gl.bindVertexArray(this.drawInfo.va);
+        gl.drawArraysInstanced(gl.TRIANGLES, 0, this.drawInfo.size, this.nrParticles);
+        gl.bindVertexArray(null);
+    }
+
+    drawParticlesReflected(){
+        let gl = this.gl;
+        let model = mat4.create();
+
+        // scale
+        mat4.scale(model, model, vec3.fromValues(0.05, 0.05, 0.05));
+
+        this.drawShader.use();
+        this.drawShader.setMat4("model", model);
+        this.drawShader.setVec3("camera", this.camera.pos[0], this.camera.pos[1], this.camera.pos[2]);
+
+        let n = vec3.fromValues(0, 1, 0);
+        let p = vec3.fromValues(0, 0, 0);
+        let reflection = mat4.fromValues(
+            1-2*n[0]*n[0],  -2*n[0]*n[1],  -2*n[2]*n[0], 0,
+             -2*n[0]*n[1], 1-2*n[1]*n[1],  -2*n[1]*n[2], 0,
+             -2*n[2]*n[0],  -2*n[1]*n[2], 1-2*n[2]*n[2], 0,
+            2*vec3.dot(n,p)*n[0], 2*vec3.dot(n,p)*n[1], 2*vec3.dot(n,p)*n[2], 1
+        );
+        this.drawShader.setInt("vertexReflection", 1);
+        this.drawShader.setMat4("reflectionMatrix", reflection);
 
         gl.bindVertexArray(this.drawInfo.va);
         gl.drawArraysInstanced(gl.TRIANGLES, 0, this.drawInfo.size, this.nrParticles);
@@ -514,10 +563,16 @@ class WebGLRenderer extends Renderer {
         
         model = mat4.create();
         mat4.translate(model, model, vec3.fromValues(0, 0, 0));
-        mat4.scale(model, model, vec3.fromValues(5, 5, 5));
+        mat4.scale(model, model, vec3.fromValues(4, 4, 4));
         shader.setMat4("model", model);
-        shader.setTexture(0, this.texture.checker_gray);
+        shader.setVec2("res", this.width, this.height);
+        // shader.setTexture(0, this.texture.gradationGround);
+        shader.setTexture(0, this.reflectionInfo.tex);
+        gl.enable(gl.BLEND);
+        gl.enable(gl.DEPTH_TEST);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
         this.renderPlane();
+        gl.disable(gl.BLEND);
     }
 
     renderCube(){

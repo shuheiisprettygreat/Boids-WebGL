@@ -23,7 +23,7 @@ class Renderer {
         };
         
         const fps = 50;
-        let interval = 1000/fps;
+        let interval = 1000.0/fps;
         let prevTime = performance.now() - interval;
 
         this.timestamp = 0;
@@ -88,6 +88,43 @@ class Renderer {
             }
         }
 
+        let startX = 0
+        let startY = 0
+        let endX = 0
+        let endY = 0
+        let minimumDistance = 2;
+        this.touchStartCallback = (event) =>  {
+            startX = event.touches[0].pageX;
+            startY = event.touches[0].pageY;
+        }
+
+        this.touchEndCallback = (event) =>  {
+            endX = event.changedTouches[0].pageX;
+            endY = event.changedTouches[0].pageY;
+            const distanceX = endX - startX;
+            const distanceY = endY - startY;
+            if(distanceX*distanceX + distanceY*distanceY > minimumDistance*minimumDistance){
+                this.camera.processRotation(distanceX, distanceY);
+                startX = endX;
+                startY = endY;
+            }
+
+            // if (Math.abs(distanceX) > minimumDistance) {
+            //     if(distanceX > 0){
+            //         this.camera.processMovement(0, this.timeDelta);
+            //     }else{
+            //         this.camera.processMovement(1, this.timeDelta);
+            //     }
+            // }
+            // if (Math.abs(distanceY) > minimumDistance) {
+            //     if(distanceY > 0){
+            //         this.camera.processMovement(2, this.timeDelta);
+            //     }else{
+            //         this.camera.processMovement(3, this.timeDelta);
+            //     }
+            // }
+        }
+
         this.mouseWheelCallback = (event) => {
             this.camera.processZoom(event.wheelDelta);
         }
@@ -102,6 +139,8 @@ class Renderer {
         window.addEventListener('keyup', this.keyupCallback);
         window.addEventListener('mousemove', this.mouseMoveCallback);
         window.addEventListener('wheel', this.mouseWheelCallback);
+        window.addEventListener('touchstart', this.touchStartCallback);
+        window.addEventListener('touchmove', this.touchEndCallback);
         this.resizeCallback();
         this.refId = requestAnimationFrame(this.frameCallback);
     }

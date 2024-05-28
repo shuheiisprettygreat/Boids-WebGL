@@ -45,13 +45,18 @@ vec3 randomInsideSphere(){
     vec3 rand = hash(uvec3(gl_FragCoord.xy, 20));
     float r = pow(rand.x, 0.3333);
     float t = TAU * rand.y;
+    // float t = TAU * (rand.y * 0.4 + 0.3);
+
     float p = acos(2.0*rand.z - 1.0);
+    p = p/(TAU*0.5) * 0.4 + 0.3;
+    p *= TAU*0.5;
+
     float sp = sin(p);
-    return vec3(r*sp*cos(t), r*sp*sin(t), r*cos(p));
+    return vec3(r*sp*cos(t), r*cos(p), r*sp*sin(t));
 }
 
 void main(){
-    vec3 position = randomInsideCylinder(150.0, 10.0) + vec3(0.0, 45, 0.0);
+    vec3 position = randomInsideCylinder(150.0, 0.0) + vec3(0.0, 60, 0.0);
     vec3 heading = randomInsideSphere();
     vec3 velocity = heading * 10.0;
     float bankingAngle = 0.0;

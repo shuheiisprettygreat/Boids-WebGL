@@ -1,0 +1,313 @@
+{
+    "activeComp": "compNode#1",
+    "connections": [
+        {
+            "from": "linearGradientShader#1.id",
+            "to": "gradientShader#1.generator"
+        },
+        {
+            "from": "compNode#1.time",
+            "to": "animationCurve#2.time"
+        },
+        {
+            "from": "compNode#1.outActiveAnimationLayer",
+            "to": "animationCurve#2.activeAnimationLayer"
+        },
+        {
+            "from": "animationCurve#2.out",
+            "to": "backgroundShape#2.on"
+        },
+        {
+            "from": "colorMaterial#2.id",
+            "to": "backgroundShape#2.material"
+        },
+        {
+            "from": "compNode#1.resolution",
+            "to": "backgroundShape#2.resolution"
+        },
+        {
+            "from": "gradientShader#1.id",
+            "to": "colorMaterial#2.colorShaders.0.shader"
+        }
+    ],
+    "nodeMeta": [
+        {
+            "children": [
+                "colorArray#1"
+            ],
+            "nodeId": "paletteContainer#1"
+        },
+        {
+            "children": [
+                "compNode#1"
+            ],
+            "nodeId": "asset#1"
+        },
+        {
+            "children": [
+                "backgroundShape#2",
+                "gradientShader#1"
+            ],
+            "nodeId": "compNode#1"
+        },
+        {
+            "children": [
+                "hiddenFolder#2"
+            ],
+            "nodeId": "gradientShader#1"
+        },
+        {
+            "children": [
+                "linearGradientShader#1"
+            ],
+            "nodeId": "hiddenFolder#2"
+        },
+        {
+            "children": [
+                "hiddenFolder#3",
+                "animationCurve#2"
+            ],
+            "nodeId": "backgroundShape#2"
+        },
+        {
+            "children": [
+                "strokeMaterial#2",
+                "colorMaterial#2"
+            ],
+            "nodeId": "hiddenFolder#3"
+        }
+    ],
+    "nodes": [
+        {
+            "nodeId": "paletteContainer#1",
+            "nodeType": "paletteContainer"
+        },
+        {
+            "attributes": {
+                "niceName": {
+                    "value": "Default Scene Palette",
+                    "varType": "string"
+                }
+            },
+            "nodeId": "colorArray#1",
+            "nodeType": "colorArray"
+        },
+        {
+            "nodeId": "asset#1",
+            "nodeType": "asset"
+        },
+        {
+            "attributes": {
+                "backgroundColor": {
+                    "value": {
+                        "a": 255,
+                        "b": 255,
+                        "g": 255,
+                        "r": 255
+                    },
+                    "varType": "color"
+                },
+                "niceName": {
+                    "value": "Composition 1",
+                    "varType": "string"
+                },
+                "resolution": {
+                    "value": {
+                        "x": 128,
+                        "y": 1
+                    },
+                    "varType": "int2"
+                }
+            },
+            "nodeId": "compNode#1",
+            "nodeType": "compNode"
+        },
+        {
+            "nodeId": "dynamicIndexManager#1",
+            "nodeType": "dynamicIndexManager"
+        },
+        {
+            "nodeId": "renderQueue#1",
+            "nodeType": "renderQueue"
+        },
+        {
+            "attributes": {
+                "gradient": {
+                    "list": [
+                        {
+                            "compound": {
+                                "color": {
+                                    "value": {
+                                        "a": 255,
+                                        "b": 150,
+                                        "g": 150,
+                                        "r": 150
+                                    },
+                                    "varType": "color"
+                                }
+                            }
+                        },
+                        {
+                            "compound": {
+                                "color": {
+                                    "value": {
+                                        "a": 255,
+                                        "b": 149,
+                                        "g": 211,
+                                        "r": 254
+                                    },
+                                    "varType": "color"
+                                },
+                                "position": {
+                                    "value": 0.9785714285714285,
+                                    "varType": "double"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "niceName": {
+                    "value": "Linear Gradient",
+                    "varType": "string"
+                }
+            },
+            "nodeId": "linearGradientShader#1",
+            "nodeType": "linearGradientShader"
+        },
+        {
+            "attributes": {
+                "niceName": {
+                    "value": "Gradient Shader [Background Shape]",
+                    "varType": "string"
+                },
+                "screenSpace": {
+                    "value": true,
+                    "varType": "bool"
+                }
+            },
+            "nodeId": "gradientShader#1",
+            "nodeType": "gradientShader"
+        },
+        {
+            "attributes": {
+                "niceName": {
+                    "value": "subUINodes",
+                    "varType": "string"
+                }
+            },
+            "nodeId": "hiddenFolder#2",
+            "nodeType": "hiddenFolder"
+        },
+        {
+            "attributes": {
+                "animationLayers": {
+                    "list": [
+                        {
+                            "compound": {
+                                "data": {
+                                    "value": [
+                                        {
+                                            "frame": 0,
+                                            "keyData": {
+                                                "value": 1.0
+                                            }
+                                        },
+                                        {
+                                            "frame": 250,
+                                            "keyData": {
+                                                "value": 0.0
+                                            }
+                                        }
+                                    ],
+                                    "varType": "numericAnimationLayer"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "dataType": {
+                    "value": 2,
+                    "varType": "enum"
+                },
+                "preInfinity": {
+                    "value": 5,
+                    "varType": "enum"
+                }
+            },
+            "nodeId": "animationCurve#2",
+            "nodeType": "animationCurve"
+        },
+        {
+            "attributes": {
+                "niceName": {
+                    "value": "Background Shape",
+                    "varType": "string"
+                },
+                "resolution": {
+                    "value": {
+                        "x": 128,
+                        "y": 1
+                    },
+                    "varType": "int2"
+                }
+            },
+            "nodeId": "backgroundShape#2",
+            "nodeType": "backgroundShape"
+        },
+        {
+            "attributes": {
+                "niceName": {
+                    "value": "Stroke",
+                    "varType": "string"
+                }
+            },
+            "nodeId": "strokeMaterial#2",
+            "nodeType": "strokeMaterial"
+        },
+        {
+            "attributes": {
+                "niceName": {
+                    "value": "subUINodes",
+                    "varType": "string"
+                }
+            },
+            "nodeId": "hiddenFolder#3",
+            "nodeType": "hiddenFolder"
+        },
+        {
+            "attributes": {
+                "colorShaders": {
+                    "list": [
+                        {
+                            "compound": {
+                                "shader": {
+                                    "varType": "shaderData"
+                                }
+                            }
+                        }
+                    ]
+                },
+                "niceName": {
+                    "value": "Fill",
+                    "varType": "string"
+                }
+            },
+            "nodeId": "colorMaterial#2",
+            "nodeType": "colorMaterial"
+        }
+    ],
+    "other": {
+        "viewport": {
+            "backgroundMode": 0,
+            "rulers": {}
+        }
+    },
+    "resourceType": "cavalry.scenefile",
+    "timelineMarkers": {
+        "beatBars": 4,
+        "beatOffset": 0.0,
+        "bpm": 60.0,
+        "enableBeatMarkers": false
+    },
+    "version": "1.0.18"
+}

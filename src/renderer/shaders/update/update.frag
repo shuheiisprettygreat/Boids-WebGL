@@ -184,9 +184,6 @@ void main(){
     vec3 centralityVectorSum = vec3(0.0);
     vec3 alignmentVectorSum = vec3(0.0);
 
-    // int neighborLimit = int(nc*3.0);
-    int neighborLimit = nrParticle;
-
     // Compute neighborhood.
     ivec3 grid = pos2grid(position);
     for(int dx=-1; dx<2; dx++){ for(int dy=-1; dy<2; dy++){ for(int dz=-1; dz<2; dz++){
@@ -223,11 +220,8 @@ void main(){
             centralityVectorSum += nd*centralityCheck;
 
             alignmentVectorSum += visibleInsideRange * (normalize(velOther) - tangent);
-
-            if(neighborCount > neighborLimit) break;
         }
-        if(neighborCount > neighborLimit) break;
-    } if(neighborCount > neighborLimit) break;} if(neighborCount > neighborLimit) break;} 
+    } } } 
 
     // compute social forces
     vec3 separationForce = neighborCount== 0 ? vec3(0.0) : -ws/float(neighborCount)*separationVectorSum;
@@ -274,7 +268,7 @@ void main(){
     float rollIn = atan(tanRollIn);
     float rollOut = atan(tanRollOut);
     float newBankingAngle = bankingAngle + rollIn - rollOut;
-    float u = 0.75;
+    float u = 0.5;
     newBankingAngle = (1.0-u) * bankingAngle + u * newBankingAngle;
     newBankingAngle = clamp(newBankingAngle, -TAU*0.25, TAU*0.25);
 
@@ -283,7 +277,6 @@ void main(){
     newNeighborRange = clamp(newNeighborRange, 0.0, Rmax);
     range2 = vec4(range1.w, range2.xyz);
     range1 = vec4(newNeighborRange, range1.xyz);
-
 
     // Check if hash-to-indices works ok
     // int neighborCountActual = 0;
@@ -302,7 +295,11 @@ void main(){
     // // debug can be done with range texture's latter entries.
     // range2.w = float(neighborCountActual- neighborCount);
 
+    velocity.y = asin(tangent.y) < TAU*0.125 ? velocity.y : velocity.y * 0.9;
+    velocity.y = asin(tangent.y) > -TAU*0.125 ? velocity.y : velocity.y * 0.9;
     velocity += force/M * deltaTime;
+
+
     position += velocity * deltaTime;
 
     positionColor = vec4(position, newBankingAngle);

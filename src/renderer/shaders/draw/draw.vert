@@ -10,11 +10,15 @@ layout(location=4) in vec3 instanceVelocity;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 proj;
-uniform float t;
+
+uniform int vertexReflection;
+uniform mat4 reflectionMatrix;
 
 out vec3 iPos;
 out vec3 iNormal;
 out vec2 iTex;
+out vec3 iVel;
+out float iReflection; 
 
 #define PI 3.1415926
 
@@ -55,13 +59,17 @@ void main() {
     vec4 pos = model_ * vec4(rotateZ(aPos, roll)*0.4, 1.0);
 
     // world position are given as instancePosition;
-    // pos.xyz += instancePositionAndBanking.xyz * 0.075;
-    pos.xyz += instancePositionAndBanking.xyz * 0.02;
+    pos.xyz += instancePositionAndBanking.xyz * 0.075;
+    // pos.xyz += instancePositionAndBanking.xyz * 0.02;
     // vec3 testPosition = rotateAroundAxis(normalize(vec3(1, 0, 1)), instancePositionAndBanking.xyz, t);
     // pos.xyz += testPosition * 0.01;
+
+    pos = vertexReflection==0 ? pos : reflectionMatrix*pos;
 
     gl_Position = proj * view * pos;
     iPos = pos.xyz;
     iNormal = normalize(mat3(model_) * aNormal);
     iTex = aTex;
+    iVel = vel;
+    iReflection = float(vertexReflection);
 }
