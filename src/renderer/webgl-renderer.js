@@ -110,10 +110,10 @@ class WebGLRenderer extends Renderer {
         // setup datas
         this.vao = initVAO(this.gl);
         this.texture = initTexture(this.gl, {
-            checker_gray : "src\\images\\checker2k.png",
-            checker_colored : "src\\images\\checker2kC.png",
-            gradation : "src\\images\\gradation.png",
-            gradationGround : "src\\images\\ground.png",
+            checker_gray : "/images/checker2k.png",
+            checker_colored : "/images/checker2kC.png",
+            gradation : "/images/gradation.png",
+            gradationGround : "/images/ground.png",
         });
         
         // setup camera
