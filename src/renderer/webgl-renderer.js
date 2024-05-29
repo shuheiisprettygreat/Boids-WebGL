@@ -42,6 +42,11 @@ import drawFsSource from './shaders/draw/draw.frag?raw';
 
 import { createBuffer, createFramebuffer, createTexture, createVertexArray } from "../createGLData.js";
 
+import checker2kUrl from '/src/images/checker2k.png';
+import checker2kCUrl from '/src/images/checker2kC.png';
+import gradationUrl from '/src/images/gradation.png';
+import groundUrl from '/src/images/ground.png';
+
 class WebGLRenderer extends Renderer {
 
     //---------------------------------------
@@ -110,10 +115,10 @@ class WebGLRenderer extends Renderer {
         // setup datas
         this.vao = initVAO(this.gl);
         this.texture = initTexture(this.gl, {
-            checker_gray : "/images/checker2k.png",
-            checker_colored : "/images/checker2kC.png",
-            gradation : "/images/gradation.png",
-            gradationGround : "/images/ground.png",
+            checker_gray : checker2kUrl,
+            checker_colored : checker2kCUrl,
+            gradation : gradationUrl,
+            gradationGround : groundUrl,
         });
         
         // setup camera
