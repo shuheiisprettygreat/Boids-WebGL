@@ -174,7 +174,7 @@ void main(){
      
     // topological interaction
     // NOTE : range2.x is range updated on 5 frame before.
-    float neighborRange = range2.y; 
+    float neighborRange = range1.w; 
     int neighborCount = 0;
     int neighborVisibleCount = 0;
     int centralityNeighborCount = 0;

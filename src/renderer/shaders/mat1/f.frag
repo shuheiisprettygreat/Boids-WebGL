@@ -14,6 +14,11 @@ float insideCircle(vec2 p, float r){
     return length(p) - r;
 }
 
+float gain(float x, float k){
+    float a = 0.5 * pow(2.0 * (x<0.5 ? x : 1.0-x), k);
+    return x<0.5 ? a : 1.0-a;
+}
+
 void main() {
 
     // FragColor = vec4(0.7,0.7,0.7,1);
@@ -24,12 +29,17 @@ void main() {
     // FragColor = texture(tex, vec2(d, 0));
     vec3 ref = texture(tex, gl_FragCoord.xy / res).rgb;
     
-    FragColor.xyz = vec3(0.6,0.65,0.5) * (ref.x==0.0 ? 0.7 : 1.0);
     
     float r = 0.1;
     float sdf = insideCircle(t, r);
+    vec3 col = vec3(0.5,0.55,0.6);
+
+    float i = clamp(length(t*8.0),0.0,1.0);
+    i= gain(i,3.0);
+    col *= mix(1.0, (ref.x==0.0 ? 0.7 : 1.0), i);
+
     float alpha = sdf < 0.0 ? 1.0 : mix(1.0, 0.0, sdf/(0.5-r));
     alpha = clamp(alpha, 0.0, 1.0);
     alpha = alpha*alpha;
-    FragColor = vec4(FragColor.xyz, alpha);
+    FragColor = vec4(col, alpha);
 }

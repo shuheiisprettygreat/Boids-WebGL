@@ -117,7 +117,7 @@ class WebGLRenderer extends Renderer {
         });
         
         // setup camera
-        this.camera = new Camera(0,0.4,0, 0, 1, 0, 0, 0, 65);
+        this.camera = new Camera(0,0.4,0, 0, 1, 0, 0, 0, 83);
         this.camera.lookAt(1, 1, 0);
         // this.camera = new Camera(5, 5, 7, 0, 1, 0, 0, 0, 45);
         // this.camera.lookAt(0.0, 0.0, 0.0);
@@ -168,7 +168,7 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("wc", 1.0);  // weighting factor for cohesion force.
         shader.setVec2("roostXZ", 0.0, 0.0); // roost position
         shader.setFloat("roostHeight", 60.0); // roost altitude
-        shader.setFloat("wRoostH", 0.019); // weighting factor horizontal attraction to the roost
+        shader.setFloat("wRoostH", 0.04); // weighting factor horizontal attraction to the roost
         shader.setFloat("wRoostV", 0.08); // weighting factor vertical attraction to the roost
         shader.setFloat("L0", 0.78); // default lift. equals to mg [N]
         shader.setFloat("T0", 0.24) // Default thrust [N]
@@ -184,7 +184,7 @@ class WebGLRenderer extends Renderer {
         let gl = this.gl;
 
         this.timestamp = 0;
-        this.timedelta = 0.01;
+        this.timedelta = 0.02;
 
         // should be power of 2
         this.nrParticles = 2048*2.0;
@@ -250,7 +250,7 @@ class WebGLRenderer extends Renderer {
         this.copyInfo = {tf:tf};
 
         // setup reflection
-        const reflectionRenderRatio = 10.0;
+        const reflectionRenderRatio = 5.0;
         const reflectionTex = createTexture(gl, null, 3, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, this.width*reflectionRenderRatio, this.height*reflectionRenderRatio);
         const reflectionFb = this.createFramebuffer_mrt(gl, [reflectionTex]);
         this.reflectionInfo = {fb:reflectionFb, tex:reflectionTex, w:this.width*reflectionRenderRatio, h:this.height*reflectionRenderRatio};
