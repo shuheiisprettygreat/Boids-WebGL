@@ -152,7 +152,7 @@ class WebGLRenderer extends Renderer {
         this.maxPerceptionRadius = 100.0;
 
         shader.setFloat("v0", 10.0); // Cruise Speed [m/s]
-        shader.setFloat("tau",1.0); // relaxation time [s]
+        shader.setFloat("tau",0.8); // relaxation time [s]
         shader.setFloat("M", 0.08); // Mass [kg]
         shader.setFloat("weightRandomForce", 0.01*100.0);
         shader.setFloat("Rmax", 100.0); // max perception range [m]
@@ -167,8 +167,9 @@ class WebGLRenderer extends Renderer {
         shader.setFloat("wa", 0.5);  // weighting factor for alignment force.
         shader.setFloat("wc", 1.0);  // weighting factor for cohesion force.
         shader.setVec2("roostXZ", 0.0, 0.0); // roost position
-        shader.setFloat("roostHeight", 60.0); // roost altitude
-        shader.setFloat("wRoostH", 0.04); // weighting factor horizontal attraction to the roost
+        this.roostHeight = 60.0;
+        shader.setFloat("roostHeight", this.roostHeight); // roost altitude
+        shader.setFloat("wRoostH", 0.035); // weighting factor horizontal attraction to the roost
         shader.setFloat("wRoostV", 0.08); // weighting factor vertical attraction to the roost
         shader.setFloat("L0", 0.78); // default lift. equals to mg [N]
         shader.setFloat("T0", 0.24) // Default thrust [N]
@@ -186,12 +187,24 @@ class WebGLRenderer extends Renderer {
         this.timestamp = 0;
         this.timedelta = 0.02;
 
+        // scale
+        this.drawScale = 0.075;
+
+        // interaction
+        this.denySphereEnabled = 0;
+        this.denySpherePosition = vec3.zero;
+        this.denySphereR = 200 * this.drawScale;
+        this.denySphereDuration = 1.0;
+        this.denySphereTimer = performance.now();
+
         // should be power of 2
         this.nrParticles = 2048*2.0;
+
 
         // setup data texture and framebuffers
         this.dataTextureWidth = Math.ceil(Math.sqrt(this.nrParticles));
         this.dataTextureHeight = Math.ceil(this.nrParticles / this.dataTextureWidth);
+        // this.dataTextureHeight = this.dataTextureWidth;
         const positionTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const positionTexture2 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
         const velocityTexture1 = createTexture(gl, null, 4, gl.RGBA32F, gl.RGBA, gl.FLOAT, this.dataTextureWidth, this.dataTextureHeight);
@@ -209,6 +222,7 @@ class WebGLRenderer extends Renderer {
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.updateInfoWrite.fb);
             gl.viewport(0, 0, this.dataTextureWidth, this.dataTextureHeight);
             this.initializeShader.use();
+            this.initializeShader.setFloat("height", this.roostHeight);
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         [this.updateInfoRead, this.updateInfoWrite] = [this.updateInfoWrite, this.updateInfoRead];
@@ -402,6 +416,15 @@ class WebGLRenderer extends Renderer {
             this.updateShader.setInt("hashDimension", this.hashDimension);
             this.updateShader.setFloat("gridSize", this.maxPerceptionRadius);
             this.updateShader.setInt("hashSize", this.hashDimension * this.hashDimension);
+
+            if(performance.now()/1000.0 - this.denySphereTimer > this.denySphereDuration){
+                this.denySphereEnabled = 0;
+            }
+
+            this.updateShader.setInt("denySphereEnabled", this.denySphereEnabled);
+            this.updateShader.setVec3("spherePosition", this.denySpherePosition[0], this.denySpherePosition[1], this.denySpherePosition[2]);
+            this.updateShader.setFloat("sphereR", this.denySphereR);
+
             this.renderQuad();
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
@@ -494,12 +517,12 @@ class WebGLRenderer extends Renderer {
         
 
         // render debug quads
-        let debug_w = this.width * 0.1;
-        gl.viewport(0, 0 ,debug_w, debug_w);
-        gl.depthFunc(gl.ALWAYS);
-        this.quadShader.use();
-        this.quadShader.setTexture(0, this.reflectionInfo.tex);
-        this.renderQuad();
+        // let debug_w = this.width * 0.1;
+        // gl.viewport(0, 0 ,debug_w, debug_w);
+        // gl.depthFunc(gl.ALWAYS);
+        // this.quadShader.use();
+        // this.quadShader.setTexture(0, this.reflectionInfo.tex);
+        // this.renderQuad();
 
         // gl.viewport(debug_w*1.2, 0 ,debug_w, debug_w);
         // this.quadShader.setTexture(0, this.sortInfoRead.tex);
@@ -509,6 +532,19 @@ class WebGLRenderer extends Renderer {
         // this.quadShader.setTexture(0, this.hash2indicesInfo.texBegin);
         // this.renderQuad();
 
+    }
+
+    OnClick(){
+        let cp = this.camera.pos;
+        let y = this.roostHeight*this.drawScale - cp[1];
+        let f = this.camera.getFront();
+        let t = y/f[1];
+        if(t > 0){
+            this.denySphereEnabled = 1;
+            this.denySpherePosition = vec3.fromValues((cp[0]+f[0]*t)/this.drawScale, this.roostHeight, (cp[2]+f[2]*t) / this.drawScale);
+            console.log(this.denySpherePosition[0], this.denySpherePosition[1],this.denySpherePosition[2]);
+            this.denySphereTimer = performance.now()/1000.0;
+        }
     }
 
     drawParticles(){
@@ -521,6 +557,7 @@ class WebGLRenderer extends Renderer {
         this.drawShader.use();
         this.drawShader.setMat4("model", model);
         this.drawShader.setVec3("camera", this.camera.pos[0], this.camera.pos[1], this.camera.pos[2]);
+        this.drawShader.setFloat("drawScale", this.drawScale);
         this.drawShader.setInt("vertexReflection", 0);
 
         gl.bindVertexArray(this.drawInfo.va);
@@ -538,6 +575,7 @@ class WebGLRenderer extends Renderer {
         this.drawShader.use();
         this.drawShader.setMat4("model", model);
         this.drawShader.setVec3("camera", this.camera.pos[0], this.camera.pos[1], this.camera.pos[2]);
+        this.drawShader.setFloat("drawScale", this.drawScale);
 
         let n = vec3.fromValues(0, 1, 0);
         let p = vec3.fromValues(0, 0, 0);

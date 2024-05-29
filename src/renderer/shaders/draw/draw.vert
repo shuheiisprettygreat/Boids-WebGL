@@ -10,6 +10,7 @@ layout(location=4) in vec3 instanceVelocity;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 proj;
+uniform float drawScale;
 
 uniform int vertexReflection;
 uniform mat4 reflectionMatrix;
@@ -59,7 +60,7 @@ void main() {
     vec4 pos = model_ * vec4(rotateZ(aPos, roll)*0.5, 1.0);
 
     // world position are given as instancePosition;
-    pos.xyz += instancePositionAndBanking.xyz * 0.075;
+    pos.xyz += instancePositionAndBanking.xyz * drawScale;
     // pos.xyz += instancePositionAndBanking.xyz * 0.02;
     // vec3 testPosition = rotateAroundAxis(normalize(vec3(1, 0, 1)), instancePositionAndBanking.xyz, t);
     // pos.xyz += testPosition * 0.01;

@@ -14,6 +14,7 @@ uniform float time;
 uniform float deltaTime;
 uniform int nrParticle;
 
+// parameters
 uniform float v0;
 uniform float tau;
 uniform float M;
@@ -36,6 +37,11 @@ uniform float T0;
 uniform float invLDRatio;
 uniform float wRollIn;
 uniform float wRollOut;
+
+// interactions
+uniform int denySphereEnabled;
+uniform vec3 spherePosition;
+uniform float sphereR;
 
 // #define L0 0.78
 // #define T0 0.24
@@ -174,7 +180,7 @@ void main(){
      
     // topological interaction
     // NOTE : range2.x is range updated on 5 frame before.
-    float neighborRange = range1.w; 
+    float neighborRange = range2.y; 
     int neighborCount = 0;
     int neighborVisibleCount = 0;
     int centralityNeighborCount = 0;
@@ -297,8 +303,19 @@ void main(){
 
     velocity.y = asin(tangent.y) < TAU*0.125 ? velocity.y : velocity.y * 0.9;
     velocity.y = asin(tangent.y) > -TAU*0.125 ? velocity.y : velocity.y * 0.9;
-    velocity += force/M * deltaTime;
 
+    if(denySphereEnabled == 1){
+        vec3 diff = position-spherePosition;
+        float l = length(diff);
+        if(l < sphereR){
+            vec3 escapeVelocity = diff/l * (sphereR - l + 4.0);
+            escapeVelocity.y *= 3.0;
+            vec3 escapeForce = escapeVelocity - velocity;
+            velocity += escapeForce*0.5;
+        }
+    }
+
+    velocity += force/M * deltaTime;
 
     position += velocity * deltaTime;
 

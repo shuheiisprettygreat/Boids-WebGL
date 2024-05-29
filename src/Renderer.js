@@ -6,6 +6,7 @@ class Renderer {
     constructor(){
 
         this.canvas = document.createElement("canvas");
+
         this.refId = 0;
         this.frameCount = -1;
         this.timeDelta = -1;
@@ -16,6 +17,7 @@ class Renderer {
         // event call-backs -------------
         this.canvas.addEventListener("click", async () => {
             await this.canvas.requestPointerLock();
+            this.OnClick();
         });
 
         this.canvas.onwheel = function(event){
@@ -88,17 +90,24 @@ class Renderer {
             }
         }
 
+        this.clickCallback = (event) => {
+            this.OnClick();
+        }
+
         let startX = 0
         let startY = 0
         let endX = 0
         let endY = 0
         let minimumDistance = 2;
+        let touchMoved = false;
+
         this.touchStartCallback = (event) =>  {
             startX = event.touches[0].pageX;
             startY = event.touches[0].pageY;
+            touchMoved = false;
         }
 
-        this.touchEndCallback = (event) =>  {
+        this.touchMoveCallback = (event) =>  {
             endX = event.changedTouches[0].pageX;
             endY = event.changedTouches[0].pageY;
             const distanceX = endX - startX;
@@ -107,22 +116,14 @@ class Renderer {
                 this.camera.processRotation(distanceX, distanceY);
                 startX = endX;
                 startY = endY;
+                touchMoved = true;
             }
+        }
 
-            // if (Math.abs(distanceX) > minimumDistance) {
-            //     if(distanceX > 0){
-            //         this.camera.processMovement(0, this.timeDelta);
-            //     }else{
-            //         this.camera.processMovement(1, this.timeDelta);
-            //     }
-            // }
-            // if (Math.abs(distanceY) > minimumDistance) {
-            //     if(distanceY > 0){
-            //         this.camera.processMovement(2, this.timeDelta);
-            //     }else{
-            //         this.camera.processMovement(3, this.timeDelta);
-            //     }
-            // }
+        this.touchEndCallback = (event) => {
+            if(!touchMoved){
+                this.OnClick();
+            }
         }
 
         this.mouseWheelCallback = (event) => {
@@ -138,10 +139,14 @@ class Renderer {
         window.addEventListener('keydown', this.keydownCallback);
         window.addEventListener('keyup', this.keyupCallback);
         window.addEventListener('mousemove', this.mouseMoveCallback);
+        // window.addEventListener('click', this.clickCallback);
         window.addEventListener('wheel', this.mouseWheelCallback);
         window.addEventListener('touchstart', this.touchStartCallback);
-        window.addEventListener('touchmove', this.touchEndCallback);
+        window.addEventListener('touchmove', this.touchMoveCallback);
+        window.addEventListener('touchend', this.touchEndCallback);
         this.resizeCallback();
+        
+        // this.canvas.requestPointerLock();
         this.refId = requestAnimationFrame(this.frameCallback);
     }
 
@@ -162,6 +167,9 @@ class Renderer {
     OnFrame(){
         // Process Inputs
         this.processKeyInput();        
+    }
+
+    OnClick(){
     }
 
     //---------------------------------------

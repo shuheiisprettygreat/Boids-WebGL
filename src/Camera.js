@@ -28,6 +28,10 @@ class Camera{
         return result;
     }
 
+    getFront(){
+        return this.front;
+    }
+
     updateCameraVector() {
         this.front = vec3.create();
         const y = this.yaw * Math.PI / 180.0;

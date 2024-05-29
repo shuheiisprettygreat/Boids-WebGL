@@ -1,6 +1,8 @@
 #version 300 es
 precision mediump float;
 
+uniform float height;
+
 layout(location=0) out vec4 positionColor;
 layout(location=1) out vec4 VelocityColor;
 layout(location=2) out vec4 rangeColor1;
@@ -56,7 +58,7 @@ vec3 randomInsideSphere(){
 }
 
 void main(){
-    vec3 position = randomInsideCylinder(150.0, 0.0) + vec3(0.0, 60, 0.0);
+    vec3 position = randomInsideCylinder(150.0, 0.0) + vec3(0.0, height, 0.0);
     vec3 heading = randomInsideSphere();
     vec3 velocity = heading * 10.0;
     float bankingAngle = 0.0;
