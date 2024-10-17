@@ -149,7 +149,7 @@ vec3 computeRandomForce(vec3 p){
 }
 
 float getSeparationGaussian(vec3 d){
-    float l = min(0.0, length(d) - rh);
+    float l = max(0.0, length(d) - rh);
     return exp(-l*l/gammaSq);
 }
 
@@ -180,7 +180,7 @@ void main(){
      
     // topological interaction
     // NOTE : range2.x is range updated on 5 frame before.
-    float neighborRange = range2.y; 
+    float neighborRange = range1.x; 
     int neighborCount = 0;
     int neighborVisibleCount = 0;
     int centralityNeighborCount = 0;

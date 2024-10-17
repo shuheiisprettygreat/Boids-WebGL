@@ -24,7 +24,7 @@ class Renderer {
             event.preventDefault();
         };
         
-        const fps = 50;
+        const fps = 120;
         let interval = 1000.0/fps;
         let prevTime = performance.now() - interval;
 

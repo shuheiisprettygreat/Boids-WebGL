@@ -164,10 +164,11 @@ class WebGLRenderer extends Renderer {
         const du = 0.05; // reaction time [s]
         shader.setFloat("s", du * 0.1); // interpolation factor
         shader.setFloat("nc", 6.5); // interpolation factor [#agent]
-        shader.setFloat("rh", 0.2); // radius of maximum separation [m]
+        const rh = 1.2;
+        shader.setFloat("rh", rh); // radius of maximum separation [m]
         const Rsep = 4.0; // separation radius [m]
         // paramater of normal distribution. take 0.01 on Rsep.
-        shader.setFloat("gammaSq", -Rsep*Rsep/Math.log(0.01));
+        shader.setFloat("gammaSq", -(Rsep-rh)*(Rsep-rh)/Math.log(0.01));
         shader.setFloat("ws", 0.7);  // weighting factor for separation force.
         shader.setFloat("wa", 0.5);  // weighting factor for alignment force.
         shader.setFloat("wc", 1.0);  // weighting factor for cohesion force.
@@ -203,7 +204,8 @@ class WebGLRenderer extends Renderer {
         this.denySphereTimer = performance.now();
 
         // should be power of 2
-        this.nrParticles = 2048*2.0;
+        this.nrParticles = 2048*4.0;
+        // this.nrParticles = 256;
 
 
         // setup data texture and framebuffers
